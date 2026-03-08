@@ -102,7 +102,7 @@ void hadron_parser(const HadronToken* token, const str nyers_szoveg) {
     if (nyers_szoveg[0] == ' ' || nyers_szoveg[0] == H_SYM_COMMENT) return;
 
     /* Dimenzió nyitása */
-    if (strchr(nyers_szoveg, H_SYM_ENTITY_DEF) != NULL && strchr(nyers_szoveg, H_SYM_BLOCK_CLOSE) != NULL) {
+    if (strchr(nyers_szoveg, H_SYM_ENTITY_DEF) != NULL && strchr(nyers_szoveg, H_SYM_BLOCK_OPEN) != NULL) {
         scope_depth++;
         printf(" -> [HADRON OS]: UJ ENTITAS NYITVA. Jelenlegi Melyseg (Scope): %d\n", scope_depth);
         return;
@@ -121,13 +121,28 @@ void hadron_parser(const HadronToken* token, const str nyers_szoveg) {
             exit(1);
         }
 
-        printf(" -> [HADRON OS]: ENTITAS ZARVA. Visszateres a %d. Melysegbe.\n", scope_depth);
+        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
+        /* vm_close_entity(); */
+
         return;
     }
 
-    /* Értékadás */
+    /* 3. ÉRTÉKADÁS / MUTÁCIÓ */
     if (scope_depth > 0 && strchr(nyers_szoveg, H_SYM_ASSIGN) != NULL) {
-        printf(" -> [VM HARDVER]: FIZIKAI MUTACIO a(z) %d. dimenzioban!\n", scope_depth);
+
+        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
+        /* vm_write_memory(); */
+
+        return;
+    }
+
+    /* 4. KVANTUM-LAKAT */
+    if (strchr(nyers_szoveg, H_SYM_QUANTUM_LOCK) != NULL) {
+
+        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
+        /* vm_lock_memory(); */
+
+        return;
     }
 }
 
