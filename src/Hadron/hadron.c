@@ -127,11 +127,24 @@ void hadron_parser(const HadronToken* token, const str nyers_szoveg) {
         return;
     }
 
-    /* 3. ÉRTÉKADÁS / MUTÁCIÓ */
+    /* 3. ÉRTÉKADÁS / MUTÁCIÓ (A régi "=" jel) */
     if (scope_depth > 0 && strchr(nyers_szoveg, H_SYM_ASSIGN) != NULL) {
 
         /* ITT JÖN MAJD A VALÓDI FIZIKA: */
         /* vm_write_memory(); */
+
+        return;
+    }
+
+    /* =========================================================
+       5. AZ ÁLLAPOTÁTMENET (A Genezis Nyila: ->)
+       ========================================================= */
+    if (scope_depth > 0 && strstr(nyers_szoveg, H_OP_TRANSITION) != NULL) {
+
+        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
+        /* Ezt a függvényt fogjuk meghívni, ami fizikailag is
+           átlépteti a Rendszert a 0. állapotból az 1. állapotba! */
+        /* vm_state_transition(); */
 
         return;
     }

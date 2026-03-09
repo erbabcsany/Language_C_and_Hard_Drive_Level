@@ -18,4 +18,7 @@
 #define H_SYM_CMD_END      ';'
 #define H_SYM_COMMENT      '-'
 
+/* AZ ÚJ DIMENZIÓVÁLTÁS OPERÁTORA (Genezis) */
+#define H_OP_TRANSITION    "->"
+
 #endif
