@@ -9,5 +9,7 @@ add_executable(untitled main.c
         "src/Fluxus#/kernel.c"
         "src/Fluxus#/kernel.h"
         src/Hadron/lexicon.h
-        src/Hadron/macro.h)
+        src/Hadron/macro.h
+        src/Hadron/vm.h
+        src/Hadron/vm.c)
 

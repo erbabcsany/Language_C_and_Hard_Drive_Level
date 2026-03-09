@@ -7,6 +7,7 @@
 
 #include "lexicon.h"
 #include "macro.h"
+#include "vm.h"
 
 /* Létrehozzuk a Globális Virtuális Gépet a C-ben */
 HadronVM vm;
@@ -46,10 +47,10 @@ str read_hadron_file(const str filename) {
 
 /* A VM Bekapcsolása (Áram alá helyezés) */
 void hadron_vm_init(void) {
-    vm.arena_ptr = 0;
-    vm.ghost_memory = 0;
+    vm.system_state = 0;
+    vm.used_memory = 0;
     int i;
-    for(i=0; i<256; i++) vm.arena[i] = 0; /* RAM nullázása */
+    for(i=0; i<VM_ARENA_SIZE; i++) vm.memory_arena[i] = 0; /* RAM nullázása */
     printf("[RENDSZER]: Hadron Virtuális Gép (VM) inicializálva. 256 rekesz lefoglalva.\n\n");
 }
 

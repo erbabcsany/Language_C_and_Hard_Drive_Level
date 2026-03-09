@@ -27,13 +27,6 @@ typedef struct {
     int column_number;     /* X-tengely */
 } HadronToken;
 
-/* 2. A VIRTUAL MACHINE (A fizikai memória) */
-typedef struct {
-    int arena[256];      /* A FIZIKAI RAM: 256 darab adat-rekesz */
-    int arena_ptr;       /* Mutatja, hol tartunk a RAM-ban (következő üres hely) */
-    int ghost_memory;    /* AZ AKKUMULÁTOR: Az utolsó művelet eredménye */
-} HadronVM;
-
 /* A FÜGGVÉNYEK HIVATALOS BEJELENTÉSE */
 void hadron_vm_init(void); /* A VM bekapcsolása */
 str read_hadron_file(const str filename);
