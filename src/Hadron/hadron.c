@@ -45,15 +45,6 @@ str read_hadron_file(const str filename) {
     return buffer;
 }
 
-/* A VM Bekapcsolása (Áram alá helyezés) */
-void hadron_vm_init(void) {
-    vm.system_state = 0;
-    vm.used_memory = 0;
-    int i;
-    for(i=0; i<VM_ARENA_SIZE; i++) vm.memory_arena[i] = 0; /* RAM nullázása */
-    printf("[RENDSZER]: Hadron Virtuális Gép (VM) inicializálva. 256 rekesz lefoglalva.\n\n");
-}
-
 /* =========================================================
    1. A LEXER (A Rendszer-Kulcsszavakkal bővítve)
    ========================================================= */
@@ -99,13 +90,12 @@ bool is_sacred_axiom(const str target_name) {
 /* A Hadron Parser Dimenzió-követője (Scope Tracking) */
 int scope_depth = 0;
 
-void hadron_parser(const HadronToken* token, const str nyers_szoveg) {
-    if (nyers_szoveg[0] == ' ' || nyers_szoveg[0] == H_SYM_COMMENT) return;
-
+void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyers_szoveg) {
     /* Dimenzió nyitása */
     if (strchr(nyers_szoveg, H_SYM_ENTITY_DEF) != NULL && strchr(nyers_szoveg, H_SYM_BLOCK_OPEN) != NULL) {
         scope_depth++;
         printf(" -> [HADRON OS]: UJ ENTITAS NYITVA. Jelenlegi Melyseg (Scope): %d\n", scope_depth);
+        vm_allocate_entity(hadron_vm, "Uj Entitas");
         return;
     }
 
@@ -145,7 +135,7 @@ void hadron_parser(const HadronToken* token, const str nyers_szoveg) {
         /* ITT JÖN MAJD A VALÓDI FIZIKA: */
         /* Ezt a függvényt fogjuk meghívni, ami fizikailag is
            átlépteti a Rendszert a 0. állapotból az 1. állapotba! */
-        /* vm_state_transition(); */
+        vm_state_transition(hadron_vm);
 
         return;
     }
@@ -167,7 +157,8 @@ int hadron_main(void) {
     printf("=== HADRON V5.0: FIZIKAI VIRTUALIS GEP (VM) AKTIV ===\n\n");
 
     /* 1. BEKAPCSOLJUK A FIZIKAI MEMÓRIÁT (RAM) */
-    hadron_vm_init();
+    HadronVM core_vm;
+    vm_init(&core_vm);
 
     /* 2. BEOLVASSUK A 'code' FÁJLT A MEREVLEMEZRŐL */
     str source_code = read_hadron_file("code.hadron");
@@ -245,7 +236,7 @@ int hadron_main(void) {
                 token.column_number = start_col;
 
                 /* BEKÜLDJÜK A PARSERT AZ INICIALIZÁLT TOKENNEL! */
-                hadron_parser(&token, buffer);
+                hadron_parser(&core_vm, &token, buffer);
 
                 /* Kiürítjük a puffert a következő parancshoz */
                 b_idx = 0;
@@ -257,6 +248,8 @@ int hadron_main(void) {
         printf("--------------------------------------------------\n");
         printf("[RENDSZER]: Futas befejezve. RAM biztonsagosan felszabaditva.\n");
     }
+
+    printf("[WARNING]: All whitespace characters are preserved.\n");
 
     return 0;
 }
