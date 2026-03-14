@@ -32,4 +32,7 @@ void vm_state_transition(HadronVM* vm);
 /* Memória lefoglalása egy új Entitásnak */
 void vm_allocate_entity(HadronVM* vm, const char* entity_name);
 
+/* Érték beírása az aktuális (legutóbb lefoglalt) memóriarekeszbe */
+void vm_write_memory(HadronVM* vm, int value);
+
 #endif

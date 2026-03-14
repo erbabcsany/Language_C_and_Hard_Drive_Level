@@ -16,7 +16,7 @@ bool is_inside_privileged_block = false;
 /* =========================================================
    A KÜLSŐ ZSILIP: Fájl beolvasása a RAM-ba (Buffer)
    ========================================================= */
-str read_hadron_file(const str filename) {
+str read_hadron_file(cstr filename) {
     /* 1. Kőkemény fizikai hozzáférés a merevlemezhez (Olvasás / Read Binary mód) */
     FILE* file = fopen(filename, "rb");
     if (file == NULL) {
@@ -48,7 +48,7 @@ str read_hadron_file(const str filename) {
 /* =========================================================
    1. A LEXER (A Rendszer-Kulcsszavakkal bővítve)
    ========================================================= */
-void hadron_lexer(const str source, HadronToken* output_token) {
+void hadron_lexer(cstr source, Token* output_token) {
     printf("[LEXER]: Letapogatas: \"%s\"\n", source);
 
     output_token->symbol = '\0';
@@ -60,7 +60,7 @@ void hadron_lexer(const str source, HadronToken* output_token) {
     output_token->is_hadron_sys = (strstr(source, "hadron") != NULL) ? 1 : 0;
 
     /* Egy egyszerűsített szimbólum-kereső a bemutatóhoz */
-    const str sym_ptr = strchr(source, H_SYM_ASSIGN);
+    cstr sym_ptr = strchr(source, H_SYM_ASSIGN);
     if (sym_ptr != NULL) {
         output_token->symbol = H_SYM_ASSIGN;
 
@@ -90,9 +90,9 @@ bool is_sacred_axiom(const str target_name) {
 /* A Hadron Parser Dimenzió-követője (Scope Tracking) */
 int scope_depth = 0;
 
-void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyers_szoveg) {
+void hadron_parser(HadronVM* hadron_vm, const Token* token) {
     /* Dimenzió nyitása */
-    if (strchr(nyers_szoveg, H_SYM_ENTITY_DEF) != NULL && strchr(nyers_szoveg, H_SYM_BLOCK_OPEN) != NULL) {
+    if (token->type == TOKEN_ENTITY_DEF || token->type == TOKEN_ENTITY_OPEN) {
         scope_depth++;
         printf(" -> [HADRON OS]: UJ ENTITAS NYITVA. Jelenlegi Melyseg (Scope): %d\n", scope_depth);
         vm_allocate_entity(hadron_vm, "Uj Entitas");
@@ -100,7 +100,7 @@ void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyer
     }
 
     /* Dimenzió zárása */
-    if (strchr(nyers_szoveg, H_SYM_BLOCK_CLOSE) != NULL) {
+    if (token->type == TOKEN_ENTITY_CLOSE) {
         scope_depth--;
 
         /* A KŐKEMÉNY FIZIKAI VÉDELEM a hadron_parser-en belül */
@@ -119,10 +119,11 @@ void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyer
     }
 
     /* 3. ÉRTÉKADÁS / MUTÁCIÓ (A régi "=" jel) */
-    if (scope_depth > 0 && strchr(nyers_szoveg, H_SYM_ASSIGN) != NULL) {
+    if (scope_depth > 0 && token->type == TOKEN_ASSIGN) {
 
         /* ITT JÖN MAJD A VALÓDI FIZIKA: */
-        /* vm_write_memory(); */
+        /* A Lexer által a tokenbe betáplált kőkemény értéket írjuk a Vasba! */
+        vm_write_memory(hadron_vm, token->numeric_value);
 
         return;
     }
@@ -130,7 +131,7 @@ void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyer
     /* =========================================================
        5. AZ ÁLLAPOTÁTMENET (A Genezis Nyila: ->)
        ========================================================= */
-    if (scope_depth > 0 && strstr(nyers_szoveg, H_OP_TRANSITION) != NULL) {
+    if (scope_depth > 0 && token->type == TOKEN_TRANSITION) {
 
         /* ITT JÖN MAJD A VALÓDI FIZIKA: */
         /* Ezt a függvényt fogjuk meghívni, ami fizikailag is
@@ -141,7 +142,7 @@ void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyer
     }
 
     /* 4. KVANTUM-LAKAT */
-    if (strchr(nyers_szoveg, H_SYM_QUANTUM_LOCK) != NULL) {
+    if (token->type == TOKEN_QUANTUM_LOCK) {
 
         /* ITT JÖN MAJD A VALÓDI FIZIKA: */
         /* vm_lock_memory(); */
@@ -161,95 +162,72 @@ int hadron_main(void) {
     vm_init(&core_vm);
 
     /* 2. BEOLVASSUK A 'code' FÁJLT A MEREVLEMEZRŐL */
-    str source_code = read_hadron_file("code.hadron");
+    cstr source_code = read_hadron_file("core.hadron");
 
     if (source_code != NULL) {
         printf("\n[RENDSZER]: 'core.hadron' betoltve. Valodi Szkenner (Téridő-követő) AKTIV!\n");
         printf("--------------------------------------------------\n");
 
         /* A TÉRIDŐ KOORDINÁTÁK */
-        int line = 1;
-        int col = 1;
-        int start_col = 1;
-
-        char buffer[512] = "";
-        int b_idx = 0;
-        bool is_comment = false;
+        int current_line = 1;
+        int current_column = 1;
+        // int start_col = 1;
+        //
+        // char buffer[512] = "";
+        // int b_idx = 0;
+        // bool is_comment = false;
 
         /* A Kőkemény Karakter-ciklus a nyers bájtokon */
         int i;
+        /* Részlet a fő olvasó ciklusból (ahol a source_code-ot járod be): */
         for (i = 0; source_code[i] != '\0'; i++) {
-            const char c = source_code[i];
+            cchr c = source_code[i];
+            cchr next_c = source_code[i+1]; /* Előretekintünk 1 karaktert! */
 
-            /* Soremelés (Új dimenzió Y-tengelyen) */
-            if (c == '\n') {
-                line++;
-                col = 1;
-                is_comment = false; /* Új sorban vége a kommentnek */
-                continue;
+            Token token;
+            token.filepath = "core.hadron";
+            token.line_number = current_line;
+            token.column_number = current_column;
+            token.symbol = c;
+            token.type = TOKEN_UNKNOWN;
+
+            /* A KATEGORIZÁLÁS (A Kohó): */
+            if (c == ' ') {
+                token.type = TOKEN_WHITESPACE_SPACE;
+            } else if (c == '\t') {
+                token.type = TOKEN_WHITESPACE_TAB;
+            } else if (c == '\n') {
+                token.type = TOKEN_WHITESPACE_NEWLINE;
+                current_line++;
+                current_column = 0; /* Új sor, oszlop nullázva */
+            } else if (c == '{') {
+                token.type = TOKEN_ENTITY_OPEN;
+            } else if (c == '}') {
+                token.type = TOKEN_ENTITY_CLOSE;
+            } else if (c == '=') {
+                token.type = TOKEN_ASSIGN;
+            } else if (c == '!') {
+                token.type = TOKEN_QUANTUM_LOCK;
+            }
+            /* A KŐKEMÉNY GENEZIS-NYÍL FELISMERÉSE (2 karakter!): */
+            else if (c == '-' && next_c == '>') {
+                token.type = TOKEN_TRANSITION;
+                i++; /* Átugorjuk a '>' karaktert, hogy ne olvassuk be kétszer! */
+                current_column++;
             }
 
-            /* Komment szűrés a Lexikon alapján */
-            if (b_idx == 0 && c == H_SYM_COMMENT) {
-                is_comment = true;
+            /* Ha felismertük, beküldjük a Parsernek és a Vasnak! */
+            if (token.type != TOKEN_UNKNOWN) {
+                hadron_parser(&core_vm, &token);
             }
 
-            if (is_comment) {
-                col++;
-                continue;
-            }
-
-            /* Behúzások (Indentation) ignorálása csak a parancs LEGELEJÉN */
-            if (b_idx == 0 && (c == ' ' || c == '\t' || c == '\r')) {
-                col++;
-                continue;
-            }
-
-            /* Rögzítjük a parancs kezdő koordinátáját (X-tengely) */
-            if (b_idx == 0) {
-                start_col = col;
-            }
-
-            /* Karakter betárazása a pufferbe */
-            buffer[b_idx++] = c;
-            buffer[b_idx] = '\0';
-            col++;
-
-            /* VÉGREHAJTÁSI TRIGGER (Amikor a parancs lezárul a Lexikon szerint) */
-            if (c == H_SYM_CMD_END || c == H_SYM_BLOCK_OPEN || c == H_SYM_BLOCK_CLOSE) {
-
-                /* =========================================================
-                   A KAPSZULA FELTÖLTÉSE (Vége a Memóriaszemétnek!)
-                   ========================================================= */
-                HadronToken token;
-
-                /* Nullázzuk az eddigi régi értékeket, hogy ne legyen káosz */
-                token.space_before = 0;
-                token.space_after = 0;
-                token.is_privileged = 0;
-                token.is_hadron_sys = 0;
-                token.symbol = c; /* Eltároljuk magát az írásjelet is! */
-
-                /* BEÉGETJÜK A PONTOS TÉRIDŐT AZ OBJEKTUMBA! */
-                token.filepath = "core.hadron";
-                token.line_number = line;
-                token.column_number = start_col;
-
-                /* BEKÜLDJÜK A PARSERT AZ INICIALIZÁLT TOKENNEL! */
-                hadron_parser(&core_vm, &token, buffer);
-
-                /* Kiürítjük a puffert a következő parancshoz */
-                b_idx = 0;
-                buffer[0] = '\0';
-            }
+            current_column++;
         }
 
-        free(source_code);
+        free((void*)source_code);
         printf("--------------------------------------------------\n");
         printf("[RENDSZER]: Futas befejezve. RAM biztonsagosan felszabaditva.\n");
     }
-
-    printf("[WARNING]: All whitespace characters are preserved.\n");
 
     return 0;
 }

@@ -14,16 +14,26 @@
 #include "macro.h"
 #include "vm.h"
 
+typedef struct {
+   unsigned char data[32];
+} RawToken;
+
 /* =========================================================
    A TISZTA ADAT-KATEGÓRIÁK (A Token Típusai)
    ========================================================= */
 typedef enum {
-    TOKEN_UNKNOWN = 0,
-    TOKEN_ENTITY_OPEN,    /* Amikor új Entitást nyitunk: '{' */
-    TOKEN_ENTITY_CLOSE,   /* Amikor lezárjuk a dimenziót: '}' */
-    TOKEN_ASSIGN,         /* A sima Értékadás / Mutáció: '=' */
-    TOKEN_TRANSITION,     /* A Dimenzióváltás / Genezis: '->' */
-    TOKEN_QUANTUM_LOCK    /* A Fizikai Lakat: '!' */
+   TOKEN_UNKNOWN = 0,
+   TOKEN_ENTITY_OPEN,
+   TOKEN_ENTITY_CLOSE,
+   TOKEN_ASSIGN,
+   TOKEN_ENTITY_DEF,
+   TOKEN_TRANSITION,
+   TOKEN_QUANTUM_LOCK,
+
+   /* === AZ ŰR FORMÁI (A megőrzött szóközök) === */
+   TOKEN_WHITESPACE_SPACE,   /* Sima szóköz (' ') */
+   TOKEN_WHITESPACE_TAB,     /* Tabulátor ('\t') */
+   TOKEN_WHITESPACE_NEWLINE  /* Sortörés ('\n') */
 } TokenType;
 
 /* =========================================================
@@ -42,13 +52,14 @@ typedef struct {
     int column_number;     /* X-tengely */
 
     TokenType type;       /* EZ AZ ÚJ AGY! A kőkemény kategória. */
-} HadronToken;
+    int numeric_value;  /* <--- EZ AZ ÚJ MEZŐ: A kőkemény számérték! */
+} Token;
 
 /* A FÜGGVÉNYEK HIVATALOS BEJELENTÉSE */
 void hadron_vm_init(void); /* A VM bekapcsolása */
 str read_hadron_file(const str filename);
-void hadron_lexer(const str source, HadronToken* output_token);
-void hadron_parser(HadronVM* hadron_vm, const HadronToken* token, const str nyers_szoveg);
+void hadron_lexer(const str source, Token* output_token);
+void hadron_parser(HadronVM* hadron_vm, const Token* token);
 int hadron_main(void);
 
 #endif /* HADRON_H */

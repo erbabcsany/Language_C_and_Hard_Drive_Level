@@ -59,3 +59,16 @@ void vm_allocate_entity(HadronVM* vm, const str entity_name) {
     printf(" -> [VM HARDVER]: %s lefoglalva a RAM[%d] cimen. (Szabad: %d)\n",
            entity_name, current_address, VM_ARENA_SIZE - vm->used_memory);
 }
+
+void vm_write_memory(HadronVM* vm, int value) {
+    /* Csak akkor írunk, ha van már lefoglalt rekesz (0-nál nagyobb used_memory) */
+    if (vm->used_memory > 0) {
+        int target_address = vm->used_memory - 1; /* A legutolsó aktív rekesz */
+        vm->memory_arena[target_address] = value;
+
+        printf(" -> [VM HARDVER]: Adat-beiras: RAM[%d] = %d.\n", target_address, value);
+    } else {
+        printf("\n[VM KERNEL PANIK]: Megkiserelt iras lefoglalatlan memoriaba!\n");
+        exit(1);
+    }
+}
