@@ -20,36 +20,46 @@ DynamicRule symbol_table[4096];
 int registered_rules = 0;
 
 void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
-    /* 1. BEÖMLÉS: A nyers kód bezúdul a memóriába */
+    /* 1. BEÖMLÉS (Ugyanaz marad) */
     size_t flooded_bytes = fread(staging_arena, 1, STAGING_SIZE, source_file);
-    if (flooded_bytes == 0) return; /* Üres az univerzum */
+    if (flooded_bytes == 0) return;
 
-    /* Átmásoljuk egy biztonságos pufferbe, és lezárjuk, hogy a strtok ne fusson túl a memórián */
     char buffer[STAGING_SIZE + 1];
     strncpy(buffer, staging_arena, flooded_bytes);
     buffer[flooded_bytes] = '\0';
 
-    /* 2. A SZEM AKTIVÁLÁSA: Felvágjuk a szöveget.
-       A fura karaktersor a végén a SZIKÉK listája: szóközök, újsorok és mindenféle írásjelek! */
-    char* current_word = strtok(buffer, " \n\t\r;!(){}[]:.,");
+    /* 2. A FINOMHANGOLT SZEM: MOSTANTÓL CSAK A SZÓKÖZT ÉS ÚJSORT VÁGJUK LE!
+       Így a '->' és a ';' önálló szavakként (tokenként) is láthatóak maradnak! */
+    char* current_word = strtok(buffer, " \n\t\r");
 
-    /* Pásztázás a memóriablokk végéig */
     while (current_word != NULL) {
 
-        /* 3. A FÓKUSZ: Megkérdezzük a Szótárat (Az Agyat) */
+        /* A) Megkérdezzük a Szótárat (Ős-igék) */
         const KeywordDefinition* kw_def = lookup_keyword(current_word);
 
         if (kw_def != NULL) {
-            /* ŐS-IGE AZONOSÍTVA! Rátoljuk a Vasra! */
+            /* Ős-ige! Betoljuk a szalagra! */
             if (kw_def->lex_enum == KW_TOKEN || kw_def->lex_enum == KW_PRIVILEGED || kw_def->lex_enum == KW_HADRON) {
                 unsigned char payload[32] = {0};
-                payload[0] = kw_def->vm_opcode; /* A kőkemény OP_CODE beégetése */
+                payload[0] = kw_def->vm_opcode;
                 vm_push_token(vm, payload);
             }
         }
+        /* B) BEOLVASZTOTT RÉGI MOTOR: Kőkemény Topológia felismerés! */
+        else if (strcmp(current_word, "->") == 0) {
+            /* Megtaláltuk az Átmenet jelét! Meghívjuk a Dimenzióváltást! */
+            vm_state_transition(vm);
+        }
+        else if (strcmp(current_word, ";") == 0) {
+            /* Később ide jön a szabály-lezárás logikája */
+        }
+        else {
+            /* Minden más (pl. a változóid nevei: 'state_void', 'ignition_event')
+               egyelőre csak csendben átfolyik a rendszeren. */
+        }
 
-        /* A Szem ugrik a következő szóra */
-        current_word = strtok(NULL, " \n\t\r;!(){}[]:.,");
+        /* Ugrás a következő szóra */
+        current_word = strtok(NULL, " \n\t\r");
     }
 }
 
@@ -204,96 +214,24 @@ void hadron_parser(HadronVM* hadron_vm, const Token* token) {
 /* =========================================================
    A FŐÁRAMKÖR (hadron_main V5.0 - Kvantum-Reaktor Élesítve)
    ========================================================= */
-int hadron_main(void) {
-    printf("=== HADRON V5.0: FIZIKAI VIRTUALIS GEP (VM) AKTIV ===\n\n");
+/* Ez a te fő függvényed a hadron.c-ben, amit a main.c hív meg! */
+int hadron_main() {
+    printf("[HADRON OS]: Rendszer inditasa...\n");
 
-    /* 1. BEKAPCSOLJUK A FIZIKAI MEMÓRIÁT (RAM) */
-    HadronVM core_vm;
-    vm_init(&core_vm);
+    HadronVM hadron_vm;
+    vm_init(&hadron_vm);
 
-    /* 2. BEOLVASSUK A 'code' FÁJLT A MEREVLEMEZRŐL */
-    cstr source_code = read_hadron_file("core.hadron");
-
-    if (source_code != NULL) {
-        printf("\n[RENDSZER]: 'core.hadron' betoltve. Valodi Szkenner (Téridő-követő) AKTIV!\n");
-        printf("--------------------------------------------------\n");
-
-        /* A TÉRIDŐ KOORDINÁTÁK */
-        int current_line = 1;
-        int current_column = 1;
-        // int start_col = 1;
-        //
-        // char buffer[512] = "";
-        // int b_idx = 0;
-        // bool is_comment = false;
-
-        /* A Kőkemény Karakter-ciklus a nyers bájtokon */
-        int i;
-        /* Részlet a fő olvasó ciklusból (ahol a source_code-ot járod be): */
-        for (i = 0; source_code[i] != '\0'; i++) {
-            cchr c = source_code[i];
-            cchr next_c = source_code[i+1]; /* Előretekintünk 1 karaktert! */
-
-            Token token;
-            token.filepath = "core.hadron";
-            token.line_number = current_line;
-            token.column_number = current_column;
-            token.symbol = c;
-            token.type = TOKEN_UNKNOWN;
-
-            /* A KATEGORIZÁLÁS (A Kohó): */
-            if (c == ' ') {
-                token.type = TOKEN_WHITESPACE_SPACE;
-            } else if (c == '\t') {
-                token.type = TOKEN_WHITESPACE_TAB;
-            } else if (c == '\n') {
-                token.type = TOKEN_WHITESPACE_NEWLINE;
-                current_line++;
-                current_column = 0; /* Új sor, oszlop nullázva */
-            } else if (c == '{') {
-                token.type = TOKEN_ENTITY_OPEN;
-            } else if (c == '}') {
-                token.type = TOKEN_ENTITY_CLOSE;
-            } else if (c == '=') {
-                token.type = TOKEN_ASSIGN;
-            } else if (c == '!') {
-                token.type = TOKEN_QUANTUM_LOCK;
-            }
-            /* A KŐKEMÉNY GENEZIS-NYÍL FELISMERÉSE (2 karakter!): */
-            else if (c == '-' && next_c == '>') {
-                token.type = TOKEN_TRANSITION;
-                i++; /* Átugorjuk a '>' karaktert, hogy ne olvassuk be kétszer! */
-                current_column++;
-            }
-
-            /* Ha felismertük, beküldjük a Parsernek és a Vasnak! */
-            if (token.type != TOKEN_UNKNOWN) {
-                hadron_parser(&core_vm, &token);
-            }
-
-            current_column++;
-        }
-
-        free((void*)source_code);
-        printf("--------------------------------------------------\n");
-        printf("[RENDSZER]: RAM biztonsagosan felszabaditva.\n");
-
-        /* Kérünk egy röntgenfelvételt az első 5 használt memóriablokkról */
-        /* Így kell kinéznie a main.c-nek: Tiszta fizika. */
-        FILE* file = fopen("core.hadron", "r");
-        if (file != NULL) {
-            /* 1. Ráborítjuk az egészet az új motorra EGYETLEN LÉPÉSBEN */
-            process_hadron_dimension(file, &core_vm);
-            fclose(file);
-        } else {
-            printf("[HIBA]: Nem talalom a core.hadron fajlt!\n");
-        }
-
-        /* 2. Röntgen a futás legvégén (50 blokkig, hogy mindent lássunk) */
-        vm_dump_memory(&core_vm, 50);
-
-        printf("[RENDSZER]: Futas befejezve.\n");
+    FILE* file = fopen("core.hadron", "r");
+    if (file) {
+        /* EGYETLEN MOTOR, EGYETLEN OLVASÁS! Nincs rewind, nincs régi while ciklus! */
+        process_hadron_dimension(file, &hadron_vm);
+        fclose(file);
+    } else {
+        printf("[HIBA]: A core.hadron nem talalhato!\n");
     }
+
+    /* Röntgen a legvégén, hogy lássuk a fizikai szalagot */
+    vm_dump_memory(&hadron_vm, 50);
 
     return 0;
 }
