@@ -41,6 +41,8 @@ typedef struct {
     bool is_locked;                  /* A Kvantum-Lakat fizikai állapota */
 } HadronVM;
 
+void vm_run(HadronVM* vm);
+
 /* ÚJ FIZIKAI TÖRVÉNY: Az Órajel */
 void vm_tick(HadronVM* vm);
 

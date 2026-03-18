@@ -176,23 +176,24 @@ int scope_depth = 0;
    A FŐÁRAMKÖR (hadron_main V5.0 - Kvantum-Reaktor Élesítve)
    ========================================================= */
 /* Ez a te fő függvényed a hadron.c-ben, amit a main.c hív meg! */
-int hadron_main() {
+void hadron_main() {
     printf("[HADRON OS]: Rendszer inditasa...\n");
-
     HadronVM hadron_vm;
     vm_init(&hadron_vm);
 
+    /* 1. FAZIS: A Szem (Lexer) beolvassa a fizikai fájlt a Jelen szalagjára */
     FILE* file = fopen("core.hadron", "r");
     if (file) {
-        /* EGYETLEN MOTOR, EGYETLEN OLVASÁS! Nincs rewind, nincs régi while ciklus! */
         process_hadron_dimension(file, &hadron_vm);
         fclose(file);
-    } else {
-        printf("[HIBA]: A core.hadron nem talalhato!\n");
     }
 
-    /* Röntgen a legvégén, hogy lássuk a fizikai szalagot */
-    vm_dump_memory(&hadron_vm, 50);
+    /* Megnezzuk a szalagot (Röntgen) */
+    vm_dump_memory(&hadron_vm, 5);
 
-    return 0;
+    /* 2. FAZIS: AZ AGY (Parser/VM) rászabadul a szalagra, és értelmezi a jeleket! */
+    vm_run(&hadron_vm);
+
+    /* 3. FAZIS: Az Órajel (Tick). Itt válik a Jövő Jelenné. */
+    vm_tick(&hadron_vm);
 }

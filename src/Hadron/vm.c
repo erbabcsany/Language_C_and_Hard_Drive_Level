@@ -7,6 +7,37 @@
 
 #include <string.h> /* A memcpy-hez feltétlenül kell! */
 
+/* AZ AGY: A Bytecode Végrehajtó Motor */
+void vm_run(HadronVM* vm) {
+    printf("\n=== [VM KERNEL]: VEGREHAJTO MOTOR INDUL ===\n");
+
+    /* Végigpásztázzuk a JELEN szalagját a használt memóriáig */
+    int i;
+    for (i = 0; i < vm->used_memory; i++) {
+        unsigned char opcode = vm->memory_current[i][0];
+
+        /* A Fizikai Elágazás (Ide jön majd a te saját logikád!) */
+        switch(opcode) {
+            case 0xFF:
+                printf("[EXEC 0xFF]: GENEZIS esemeny a %d. rekeszben!\n", i);
+                break;
+            case 0xFE:
+                printf("[EXEC 0xFE]: MUTACIO esemeny a %d. rekeszben! (Cel dimenzio: %d)\n", i, vm->memory_current[i][1]);
+                break;
+            case 0x01:
+                printf("[EXEC 0x01]: TOKEN (Os-ige) a %d. rekeszben! A geleres elkezdodik...\n", i);
+                break;
+            case 0x00:
+                /* Üres rekesz, átugorjuk */
+                break;
+            default:
+                printf("[EXEC %02X]: Ismeretlen OP_CODE a %d. rekeszben.\n", opcode, i);
+                break;
+        }
+    }
+    printf("=== [VM KERNEL]: CIKLUS VEGE. ===\n\n");
+}
+
 /* 1. BEKAPCSOLÁS: Mindkét dimenziót kinullázzuk */
 void vm_init(HadronVM* vm) {
     memset(vm->memory_current, 0, sizeof(vm->memory_current));

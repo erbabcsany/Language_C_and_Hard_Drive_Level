@@ -90,6 +90,6 @@ void hadron_vm_init(void); /* A VM bekapcsolása */
 str read_hadron_file(const str filename);
 void hadron_lexer(const str source, Token* output_token);
 void hadron_parser(HadronVM* hadron_vm, const Token* token);
-int hadron_main(void);
+void hadron_main(void);
 
 #endif /* HADRON_H */
