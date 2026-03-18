@@ -37,6 +37,11 @@ void vm_run(HadronVM* vm) {
                 }
                 break;
 
+            case 0xEE:
+                printf("[EXEC 0xEE]: SZABALY VEGE (;). A gep torli a kontextust, es uj lelegzetet vesz.\n");
+                /* Ide jön majd később az a fizika, ami kinullázza a belső állapotokat a következő szabály előtt */
+                break;
+
             case 0x01:
                 printf("[EXEC 0x01]: TOKEN a %d. rekeszben. Varakozas a fuziora.\n", i);
                 break;
