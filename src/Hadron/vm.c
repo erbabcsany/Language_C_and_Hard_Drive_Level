@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include "vm.h"
 
+#include <string.h>
+
 #include "macro.h"
 
 /* =========================================================
@@ -14,17 +16,28 @@
 
 void vm_init(HadronVM* vm) {
     /* 1. Fázis: A Nyers Void (Üresség) létrehozása */
+    vm->absolute_head = 0;
     vm->used_memory = 0;
     vm->system_state = 0; /* 0. Állapot: VOID */
     vm->is_locked = false;
 
     /* Kinullázzuk a RAM-ot, nehogy memóriaszemét maradjon! */
-    int i;
-    for (i = 0; i < VM_ARENA_SIZE; i++) {
-        vm->memory_arena[i] = 0;
-    }
-
+    memset(vm->memory_arena, 0, sizeof(vm->memory_arena));
     printf("[VM HARDVER]: Vas bekapcsolva. Arena (%d rekesz) kinullazva. Allapot: VOID (0).\n", VM_ARENA_SIZE);
+}
+
+void vm_push_token(HadronVM* vm, unsigned char* new_data) {
+    /* 1. Kiszámoljuk a fizikai indexet a chipen (Modulo operátor) */
+    int physical_index = vm->absolute_head % VM_ARENA_SIZE;
+
+    /* 2. Csak és kizárólag azt az 1 darab 32 bájtos dobozt írjuk felül. Nincs memmove! */
+    memcpy(vm->memory_arena[physical_index].data, new_data, 32);
+
+    /* 3. Lépünk a szalagon előre */
+    vm->absolute_head++;
+    if (vm->used_memory < VM_ARENA_SIZE) {
+        vm->used_memory++;
+    }
 }
 
 void vm_state_transition(HadronVM* vm) {
@@ -58,17 +71,4 @@ void vm_allocate_entity(HadronVM* vm, const str entity_name) {
 
     printf(" -> [VM HARDVER]: %s lefoglalva a RAM[%d] cimen. (Szabad: %d)\n",
            entity_name, current_address, VM_ARENA_SIZE - vm->used_memory);
-}
-
-void vm_write_memory(HadronVM* vm, int value) {
-    /* Csak akkor írunk, ha van már lefoglalt rekesz (0-nál nagyobb used_memory) */
-    if (vm->used_memory > 0) {
-        int target_address = vm->used_memory - 1; /* A legutolsó aktív rekesz */
-        vm->memory_arena[target_address] = value;
-
-        printf(" -> [VM HARDVER]: Adat-beiras: RAM[%d] = %d.\n", target_address, value);
-    } else {
-        printf("\n[VM KERNEL PANIK]: Megkiserelt iras lefoglalatlan memoriaba!\n");
-        exit(1);
-    }
 }

@@ -9,6 +9,47 @@
 #include "macro.h"
 #include "vm.h"
 
+#define STAGING_SIZE 4096
+
+/* A Zsilip (Staging Arena). Ide zúdul be a kód a külvilágból. */
+char staging_arena[STAGING_SIZE];
+
+/* Itt foglaljuk le a tényleges, fizikai memóriát az 1%-os Radarunknak! */
+DynamicRule symbol_table[4096];
+int registered_rules = 0;
+
+void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
+    /* 1. BEÖMLÉS: Egyetlen mozdulattal ráborítjuk a kódot a memóriára. Nincs ciklus. */
+    size_t flooded_bytes = fread(staging_arena, 1, STAGING_SIZE, source_file);
+
+    if (flooded_bytes == 0) return; /* Üres az univerzum */
+
+    /* 2. A RADAR (Mutatók a Téridőben) */
+    char* current_anchor = staging_arena;              /* Hol vagyunk most? */
+    char* end_of_space = staging_arena + flooded_bytes; /* Hol a Zsilip vége? */
+
+    /* Itt nem karaktereket olvasunk! A strstr (String Search) egy
+       hardveresen optimalizált radar-ugrás a memóriában. */
+    char* next_token_pos = strstr(current_anchor, "token");
+
+    /* Ha talált egy pillért (token-t), a C-motor tudja, hogy a 'current_anchor'
+       és a 'next_token_pos' KÖZÖTTI távolság maga a kőkemény TOPOLÓGIA (A Szabály)! */
+
+    if (next_token_pos != NULL) {
+        /*
+          Itt történik az 1% mágiája:
+          Kiszámoljuk az űrt a két Ige között.
+          Ezt az űrt (pl. a " \n_ " jeleket) belevágjuk a Hash-egyenletbe,
+          létrehozzuk a 64 bites utasítást, és átküldjük a Vasra (vm_push_token).
+        */
+
+        /* ... A topológiai zúzás helye ... */
+
+        /* Ugrás a következő horgonyra (átugorjuk magát a "token" szót) */
+        current_anchor = next_token_pos + 5;
+    }
+}
+
 /* Létrehozzuk a Globális Virtuális Gépet a C-ben */
 HadronVM vm;
 bool is_inside_privileged_block = false;
@@ -121,9 +162,15 @@ void hadron_parser(HadronVM* hadron_vm, const Token* token) {
     /* 3. ÉRTÉKADÁS / MUTÁCIÓ (A régi "=" jel) */
     if (scope_depth > 0 && token->type == TOKEN_ASSIGN) {
 
-        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
-        /* A Lexer által a tokenbe betáplált kőkemény értéket írjuk a Vasba! */
-        vm_write_memory(hadron_vm, token->numeric_value);
+        /* AZ ÚJ FIZIKA: Létrehozzuk az üres 32 bájtos dobozt (Payload) */
+        unsigned char payload[32] = {0};
+
+        /* A számértéket beletesszük a doboz elejébe.
+           (Később a 0. indexre jön a kőkemény OP_CODE, így az adatot az 1. indexre tesszük) */
+        payload[1] = (unsigned char)token->numeric_value;
+
+        /* Rátoljuk a dobozt a Vas 1024-es Egyirányú Szalagjára (Single Flow Buffer) */
+        vm_push_token(hadron_vm, payload);
 
         return;
     }

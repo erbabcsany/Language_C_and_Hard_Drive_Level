@@ -14,9 +14,39 @@
 #include "macro.h"
 #include "vm.h"
 
+/* hadron.h vagy hadron.c - A Dinamikus Szabályrendszer Alapja */
+
+typedef enum {
+   TOPOLOGY_PREFIX,  /* Jel token (pl. \n token) */
+   TOPOLOGY_INFIX,   /* token Jel token (pl. token -> token) */
+   TOPOLOGY_POSTFIX  /* token Jel (pl. token;) */
+} TopologyType;
+
+/* Ez a struktúra az "Egyetlen Szabály" fizikai teste a gép memóriájában */
 typedef struct {
-   unsigned char data[32];
-} RawToken;
+   unsigned int hash_id;     /* A matematikai generált azonosító (A "Kvantumállapot") */
+   char symbol[16];          /* Maga a jel (pl. "->", ";", vagy "\n") */
+   TopologyType topology;    /* Hol helyezkedik el a tokenhez képest? */
+
+   int semantic_action;      /* Mit kell mondani a Bare Metalnak? (pl. tárolj, ugorj, zárj le) */
+} DynamicRule;
+
+/* A Kapu: Egy tömb, ami a futás során telik meg az új, felfedezett szabályokkal */
+extern DynamicRule symbol_table[4096];
+
+/* hadron.h - A Lexer alapjai */
+
+typedef enum {
+   KW_NONE = 0,      /* Nem kulcsszó (pl. írásjel, szimbólum, változónév) */
+
+   /* Az Ős-igék és származékaik (Adat és Kontextus) */
+   KW_TOKEN,         /* "token" */
+   KW_PRIVILEGED,    /* "privileged" */
+   KW_HADRON,        /* "hadron" */
+
+   /* A Meta-ige (Szabályalkotó) */
+   KW_SYNTAX         /* "syntax" */
+} HadronKeyword;
 
 /* =========================================================
    A TISZTA ADAT-KATEGÓRIÁK (A Token Típusai)
