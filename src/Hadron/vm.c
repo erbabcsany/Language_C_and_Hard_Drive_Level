@@ -6,9 +6,23 @@
 #include <stdlib.h>
 #include "vm.h"
 
-#include <string.h>
+#include <string.h> /* A memcpy-hez feltétlenül kell! */
 
 #include "macro.h"
+
+/* ... többi függvényed (vm_push_token, stb) ... */
+
+void vm_tick(HadronVM* vm) {
+    /* 1. A JÖVŐ BELESZAKAD A JELENBE:
+       A Next szalag teljes tartalmát kőkeményen ráhúzzuk a Current szalagra */
+    memcpy(vm->memory_current, vm->memory_next, sizeof(vm->memory_next));
+
+    /* 2. A JÖVŐ KIÜRÍTÉSE:
+       A Next szalagot kinullázzuk (0x00), hogy tiszta lappal induljon a következő ciklus */
+    memset(vm->memory_next, 0, sizeof(vm->memory_next));
+
+    printf("=== [VM ORAJEL]: TICK. A Jovo Jelenne valt. ===\n");
+}
 
 /* =========================================================
    A HADRON VM FIZIKAI IMPLEMENTÁCIÓJA

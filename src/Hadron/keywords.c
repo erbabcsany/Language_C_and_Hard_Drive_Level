@@ -5,6 +5,8 @@
 /* keywords.c - A Szótár Fizikai Teste */
 
 #include "keywords.h"
+
+#include <stdio.h>
 #include <string.h>
 
 /* A kőkemény, különszervezett szótárunk. Bármikor bővíthető egy sorral,

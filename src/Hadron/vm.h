@@ -29,12 +29,20 @@ typedef struct {
 
 typedef struct {
     RawToken memory_arena[VM_ARENA_SIZE]; /* A nyers RAM (A Meder) */
+
+    /* A Kettéhasított Téridő: */
+    unsigned char memory_current[VM_ARENA_SIZE][32]; /* A JELEN (Csak Olvasás) */
+    unsigned char memory_next[VM_ARENA_SIZE][32];    /* A JÖVŐ (Csak Írás / Mutáció) */
+
     int used_memory;                 /* Mutató: Mennyi van már lefoglalva? */
     int absolute_head;
 
     int system_state;                /* A Rendszer állapota (0 = Void, 1 = Spark) */
     bool is_locked;                  /* A Kvantum-Lakat fizikai állapota */
 } HadronVM;
+
+/* ÚJ FIZIKAI TÖRVÉNY: Az Órajel */
+void vm_tick(HadronVM* vm);
 
 /* --- A Végrehajtó Rendszerhívások (SysCalls) --- */
 

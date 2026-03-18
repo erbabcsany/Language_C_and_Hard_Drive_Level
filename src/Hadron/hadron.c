@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "keywords.h"
 #include "lexicon.h"
 #include "macro.h"
 #include "vm.h"
@@ -19,34 +20,36 @@ DynamicRule symbol_table[4096];
 int registered_rules = 0;
 
 void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
-    /* 1. BEÖMLÉS: Egyetlen mozdulattal ráborítjuk a kódot a memóriára. Nincs ciklus. */
+    /* 1. BEÖMLÉS: A nyers kód bezúdul a memóriába */
     size_t flooded_bytes = fread(staging_arena, 1, STAGING_SIZE, source_file);
-
     if (flooded_bytes == 0) return; /* Üres az univerzum */
 
-    /* 2. A RADAR (Mutatók a Téridőben) */
-    char* current_anchor = staging_arena;              /* Hol vagyunk most? */
-    char* end_of_space = staging_arena + flooded_bytes; /* Hol a Zsilip vége? */
+    /* Átmásoljuk egy biztonságos pufferbe, és lezárjuk, hogy a strtok ne fusson túl a memórián */
+    char buffer[STAGING_SIZE + 1];
+    strncpy(buffer, staging_arena, flooded_bytes);
+    buffer[flooded_bytes] = '\0';
 
-    /* Itt nem karaktereket olvasunk! A strstr (String Search) egy
-       hardveresen optimalizált radar-ugrás a memóriában. */
-    char* next_token_pos = strstr(current_anchor, "token");
+    /* 2. A SZEM AKTIVÁLÁSA: Felvágjuk a szöveget.
+       A fura karaktersor a végén a SZIKÉK listája: szóközök, újsorok és mindenféle írásjelek! */
+    char* current_word = strtok(buffer, " \n\t\r;!(){}[]:.,");
 
-    /* Ha talált egy pillért (token-t), a C-motor tudja, hogy a 'current_anchor'
-       és a 'next_token_pos' KÖZÖTTI távolság maga a kőkemény TOPOLÓGIA (A Szabály)! */
+    /* Pásztázás a memóriablokk végéig */
+    while (current_word != NULL) {
 
-    if (next_token_pos != NULL) {
-        /*
-          Itt történik az 1% mágiája:
-          Kiszámoljuk az űrt a két Ige között.
-          Ezt az űrt (pl. a " \n_ " jeleket) belevágjuk a Hash-egyenletbe,
-          létrehozzuk a 64 bites utasítást, és átküldjük a Vasra (vm_push_token).
-        */
+        /* 3. A FÓKUSZ: Megkérdezzük a Szótárat (Az Agyat) */
+        const KeywordDefinition* kw_def = lookup_keyword(current_word);
 
-        /* ... A topológiai zúzás helye ... */
+        if (kw_def != NULL) {
+            /* ŐS-IGE AZONOSÍTVA! Rátoljuk a Vasra! */
+            if (kw_def->lex_enum == KW_TOKEN || kw_def->lex_enum == KW_PRIVILEGED || kw_def->lex_enum == KW_HADRON) {
+                unsigned char payload[32] = {0};
+                payload[0] = kw_def->vm_opcode; /* A kőkemény OP_CODE beégetése */
+                vm_push_token(vm, payload);
+            }
+        }
 
-        /* Ugrás a következő horgonyra (átugorjuk magát a "token" szót) */
-        current_anchor = next_token_pos + 5;
+        /* A Szem ugrik a következő szóra */
+        current_word = strtok(NULL, " \n\t\r;!(){}[]:.,");
     }
 }
 
@@ -276,7 +279,18 @@ int hadron_main(void) {
         printf("[RENDSZER]: RAM biztonsagosan felszabaditva.\n");
 
         /* Kérünk egy röntgenfelvételt az első 5 használt memóriablokkról */
-        vm_dump_memory(&core_vm, 5);
+        /* Így kell kinéznie a main.c-nek: Tiszta fizika. */
+        FILE* file = fopen("core.hadron", "r");
+        if (file != NULL) {
+            /* 1. Ráborítjuk az egészet az új motorra EGYETLEN LÉPÉSBEN */
+            process_hadron_dimension(file, &core_vm);
+            fclose(file);
+        } else {
+            printf("[HIBA]: Nem talalom a core.hadron fajlt!\n");
+        }
+
+        /* 2. Röntgen a futás legvégén (50 blokkig, hogy mindent lássunk) */
+        vm_dump_memory(&core_vm, 50);
 
         printf("[RENDSZER]: Futas befejezve.\n");
     }

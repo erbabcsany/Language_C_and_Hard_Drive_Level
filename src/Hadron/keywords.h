@@ -13,3 +13,5 @@ typedef struct {
     HadronKeyword lex_enum;    /* A Parser nyelve (pl. KW_TOKEN) */
     unsigned char vm_opcode;   /* A Vas nyelve (pl. 0x01) */
 } KeywordDefinition;
+
+const KeywordDefinition* lookup_keyword(const char* word);
