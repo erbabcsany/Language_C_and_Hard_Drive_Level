@@ -19,6 +19,34 @@ char staging_arena[STAGING_SIZE];
 DynamicRule symbol_table[4096];
 int registered_rules = 0;
 
+/* EZT TÖRÖLTED KI VÉLETLENÜL: A Dimenzióváltás fizikája */
+void vm_state_transition(HadronVM* vm) {
+    unsigned char transition_payload[32] = {0};
+
+    if (vm->system_state == 0) {
+        vm->system_state = 1;
+        printf("-> [VM HARDVER]: *** GENEZIS ESEMENY AKTIVALVA ***\n");
+        transition_payload[0] = 0xFF; /* Genezis OP_CODE */
+        transition_payload[1] = 1;
+        vm_push_token(vm, transition_payload);
+    }
+    else if (vm->system_state == 1) {
+        vm->system_state = 2;
+        printf("\n[VM WARNING]: Ujabb atmenet erzekelve! A szabaly felulirva.\n");
+        transition_payload[0] = 0xFE; /* Mutáció OP_CODE */
+        transition_payload[1] = 2;
+        vm_push_token(vm, transition_payload);
+    }
+    else {
+        vm->system_state++;
+        printf("\n[VM WARNING]: Mutacio! Dimenziovaltas: %d -> %d.\n",
+               vm->system_state - 1, vm->system_state);
+        transition_payload[0] = 0xFE;
+        transition_payload[1] = (unsigned char)vm->system_state;
+        vm_push_token(vm, transition_payload);
+    }
+}
+
 void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
     /* 1. BEÖMLÉS (Ugyanaz marad) */
     size_t flooded_bytes = fread(staging_arena, 1, STAGING_SIZE, source_file);
@@ -143,73 +171,6 @@ bool is_sacred_axiom(const str target_name) {
    ========================================================= */
 /* A Hadron Parser Dimenzió-követője (Scope Tracking) */
 int scope_depth = 0;
-
-void hadron_parser(HadronVM* hadron_vm, const Token* token) {
-    /* Dimenzió nyitása */
-    if (token->type == TOKEN_ENTITY_DEF || token->type == TOKEN_ENTITY_OPEN) {
-        scope_depth++;
-        printf(" -> [HADRON OS]: UJ ENTITAS NYITVA. Jelenlegi Melyseg (Scope): %d\n", scope_depth);
-        vm_allocate_entity(hadron_vm, "Uj Entitas");
-        return;
-    }
-
-    /* Dimenzió zárása */
-    if (token->type == TOKEN_ENTITY_CLOSE) {
-        scope_depth--;
-
-        /* A KŐKEMÉNY FIZIKAI VÉDELEM a hadron_parser-en belül */
-        if (scope_depth < 0) {
-            /* ÍME A KÉRT PROFESSZIONÁLIS HIBAÜZENET A TOKENBŐL: */
-            printf("\n%s:%d:%d: [FATAL ERROR] Zarojel-tulcsordulas!\n",
-                   token->filepath, token->line_number, token->column_number);
-            printf("Vegzetes hiba: Tobb a befejezo '}' mint a nyito '{'.\n");
-            exit(1);
-        }
-
-        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
-        /* vm_close_entity(); */
-
-        return;
-    }
-
-    /* 3. ÉRTÉKADÁS / MUTÁCIÓ (A régi "=" jel) */
-    if (scope_depth > 0 && token->type == TOKEN_ASSIGN) {
-
-        /* AZ ÚJ FIZIKA: Létrehozzuk az üres 32 bájtos dobozt (Payload) */
-        unsigned char payload[32] = {0};
-
-        /* A számértéket beletesszük a doboz elejébe.
-           (Később a 0. indexre jön a kőkemény OP_CODE, így az adatot az 1. indexre tesszük) */
-        payload[1] = (unsigned char)token->numeric_value;
-
-        /* Rátoljuk a dobozt a Vas 1024-es Egyirányú Szalagjára (Single Flow Buffer) */
-        vm_push_token(hadron_vm, payload);
-
-        return;
-    }
-
-    /* =========================================================
-       5. AZ ÁLLAPOTÁTMENET (A Genezis Nyila: ->)
-       ========================================================= */
-    if (scope_depth > 0 && token->type == TOKEN_TRANSITION) {
-
-        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
-        /* Ezt a függvényt fogjuk meghívni, ami fizikailag is
-           átlépteti a Rendszert a 0. állapotból az 1. állapotba! */
-        vm_state_transition(hadron_vm);
-
-        return;
-    }
-
-    /* 4. KVANTUM-LAKAT */
-    if (token->type == TOKEN_QUANTUM_LOCK) {
-
-        /* ITT JÖN MAJD A VALÓDI FIZIKA: */
-        /* vm_lock_memory(); */
-
-        return;
-    }
-}
 
 /* =========================================================
    A FŐÁRAMKÖR (hadron_main V5.0 - Kvantum-Reaktor Élesítve)
