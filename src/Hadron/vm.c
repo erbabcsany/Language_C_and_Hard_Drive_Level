@@ -44,13 +44,21 @@ void vm_state_transition(HadronVM* vm) {
     /* A Dimenzióváltás: 0 -> 1 */
     if (vm->system_state == 0) {
         vm->system_state = 1;
-        printf(" -> [VM HARDVER]: *** GENEZIS ESEMENY AKTIVALVA ***\n");
-        printf(" -> [VM HARDVER]: Dimenziovaltas: VOID (0) -> SPARK (1).\n");
-        printf(" -> [VM HARDVER]: A Fluxus folyo elindult.\n");
-    } else {
-        /* Ha már 1-es állapotban van, és valaki újra próbálja indítani: */
-        printf("\n[VM KERNEL PANIK]: Illegalis Dimenziovaltas! A Genezis csak egyszer tortenhet meg!\n");
-        exit(1);
+        printf("-> [VM HARDVER]: *** GENEZIS ESEMENY AKTIVALVA ***\n");
+        printf("-> [VM HARDVER]: Dimenziovaltas: VOID (0) -> SPARK (1).\n");
+        printf("-> [VM HARDVER]: A Fluxus folyo elindult.\n");
+    }
+    else if (vm->system_state == 1) {
+        /* AZ 1% LOGIKÁJA: Nincs Kernel Pánik! A Gép alkalmazkodik és szintet lép! */
+        vm->system_state = 2;
+        printf("\n[VM WARNING]: Ujabb atmenet erzekelve! A szabaly felulirva.\n");
+        printf("-> [VM HARDVER]: Dimenziovaltas: SPARK (1) -> FLUXUS (2).\n");
+    }
+    else {
+        /* Bármilyen további átmenet csak csúsztatja a dimenziót, de a gép SOSEM áll le. */
+        vm->system_state++;
+        printf("\n[VM WARNING]: Mutacio! Dimenziovaltas: %d -> %d.\n",
+               vm->system_state - 1, vm->system_state);
     }
 }
 
