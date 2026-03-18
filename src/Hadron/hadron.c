@@ -273,7 +273,12 @@ int hadron_main(void) {
 
         free((void*)source_code);
         printf("--------------------------------------------------\n");
-        printf("[RENDSZER]: Futas befejezve. RAM biztonsagosan felszabaditva.\n");
+        printf("[RENDSZER]: RAM biztonsagosan felszabaditva.\n");
+
+        /* Kérünk egy röntgenfelvételt az első 5 használt memóriablokkról */
+        vm_dump_memory(&core_vm, 5);
+
+        printf("[RENDSZER]: Futas befejezve.\n");
     }
 
     return 0;

@@ -41,24 +41,37 @@ void vm_push_token(HadronVM* vm, unsigned char* new_data) {
 }
 
 void vm_state_transition(HadronVM* vm) {
-    /* A Dimenzióváltás: 0 -> 1 */
+    /* Létrehozunk egy üres 32 bájtos fizikai dobozt a váltásnak */
+    unsigned char transition_payload[32] = {0};
+
     if (vm->system_state == 0) {
         vm->system_state = 1;
         printf("-> [VM HARDVER]: *** GENEZIS ESEMENY AKTIVALVA ***\n");
-        printf("-> [VM HARDVER]: Dimenziovaltas: VOID (0) -> SPARK (1).\n");
-        printf("-> [VM HARDVER]: A Fluxus folyo elindult.\n");
+
+        /* A FIZIKA: Beégetjük a dobozba a Genezis OP_CODE-ját (pl. 0xFF) és betoljuk! */
+        transition_payload[0] = 0xFF; /* Rendszer szintű esemény kódja */
+        transition_payload[1] = 1;    /* Az új dimenzió száma */
+        vm_push_token(vm, transition_payload);
+
     }
     else if (vm->system_state == 1) {
-        /* AZ 1% LOGIKÁJA: Nincs Kernel Pánik! A Gép alkalmazkodik és szintet lép! */
         vm->system_state = 2;
         printf("\n[VM WARNING]: Ujabb atmenet erzekelve! A szabaly felulirva.\n");
-        printf("-> [VM HARDVER]: Dimenziovaltas: SPARK (1) -> FLUXUS (2).\n");
+
+        /* A FIZIKA: Betoljuk a Dimenzióváltás lenyomatát a szalagra! */
+        transition_payload[0] = 0xFE; /* Mutáció OP_CODE */
+        transition_payload[1] = 2;    /* Cél dimenzió */
+        vm_push_token(vm, transition_payload);
     }
     else {
-        /* Bármilyen további átmenet csak csúsztatja a dimenziót, de a gép SOSEM áll le. */
         vm->system_state++;
         printf("\n[VM WARNING]: Mutacio! Dimenziovaltas: %d -> %d.\n",
                vm->system_state - 1, vm->system_state);
+
+        /* A FIZIKA: További mutációk betolása */
+        transition_payload[0] = 0xFE;
+        transition_payload[1] = (unsigned char)vm->system_state;
+        vm_push_token(vm, transition_payload);
     }
 }
 
@@ -79,4 +92,33 @@ void vm_allocate_entity(HadronVM* vm, const str entity_name) {
 
     printf(" -> [VM HARDVER]: %s lefoglalva a RAM[%d] cimen. (Szabad: %d)\n",
            entity_name, current_address, VM_ARENA_SIZE - vm->used_memory);
+}
+
+void vm_dump_memory(HadronVM* vm, int blocks_to_show) {
+    printf("\n=== [VM RÖNTGEN: FIZIKAI MEMORIA DUMP] ===\n");
+
+    if (vm->used_memory == 0) {
+        printf("A 1024-es szalag teljesen ures. Nincs adat.\n");
+        printf("==========================================\n");
+        return;
+    }
+
+    /* Csak addig megyünk, ameddig van adat, vagy ameddig a limit engedi */
+    int limit = (vm->used_memory < blocks_to_show) ? vm->used_memory : blocks_to_show;
+
+    int i;
+    for (i = 0; i < limit; i++) {
+        printf(" [BLOCK %04d] | ", i);
+
+        /* Mutató a kőkemény 32 bájtos doboz kezdetére a szalagon */
+        unsigned char* raw_bytes = (unsigned char*)&vm->memory_arena[i];
+
+        /* Kiíratjuk az első 8 bájtot hexadecimális formában (OP_CODE + Dimenzio + Adat) */
+        int b;
+        for (b = 0; b < 8; b++) {
+            printf("%02X ", raw_bytes[b]);
+        }
+        printf("... \n");
+    }
+    printf("==========================================\n\n");
 }

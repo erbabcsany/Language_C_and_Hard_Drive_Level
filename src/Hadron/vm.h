@@ -49,4 +49,7 @@ void vm_state_transition(HadronVM* vm);
 /* Memória lefoglalása egy új Entitásnak */
 void vm_allocate_entity(HadronVM* vm, const char* entity_name);
 
+/* A fizikai memória nyers hexadecimális kiíratása */
+void vm_dump_memory(HadronVM* vm, int blocks_to_show);
+
 #endif
