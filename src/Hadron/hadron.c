@@ -79,11 +79,19 @@ void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
             vm_state_transition(vm);
         }
         else if (strcmp(current_word, ";") == 0) {
-            /* Később ide jön a szabály-lezárás logikája */
+            /* SZABÁLY-LEZÁRÁS LOGIKÁJA AKTIVÁLVA! */
+            unsigned char payload[32] = {0};
+            payload[0] = 0xEE; /* A kőkemény 0xEE OP_CODE */
+            vm_push_token(vm, payload);
+            /* Opcionális: ki is írhatjuk, hogy a Lexer látta */
+            /* printf("[LEXER]: Pontosvesszo megtalalva. Szabaly lezarva.\n"); */
         }
+        /* ===== ÚJ FIZIKAI TÖRVÉNY: A SZIGORÚ FORDÍTÓ PAJZSA ===== */
         else {
-            /* Minden más (pl. a változóid nevei: 'state_void', 'ignition_event')
-               egyelőre csak csendben átfolyik a rendszeren. */
+            printf("\n[VM KERNEL PANIK]: Szigoru Fordito aktivalva!\n");
+            printf("[HIBA]: Szintaktikai anomalia a dimenzioban! Ismeretlen entitas: '%s'\n", current_word);
+            printf("A Vas fizikailag leallitja a fuziot.\n");
+            exit(1); /* 1-es hibakóddal kíméletlenül kilőjük a programot! */
         }
 
         /* Ugrás a következő szóra */
