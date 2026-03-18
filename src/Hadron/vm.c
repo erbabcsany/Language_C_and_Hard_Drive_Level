@@ -8,30 +8,43 @@
 #include <string.h> /* A memcpy-hez feltétlenül kell! */
 
 /* AZ AGY: A Bytecode Végrehajtó Motor */
+/* AZ AGY: A Valódi, Fizikai Bájtkód Értelmező */
 void vm_run(HadronVM* vm) {
     printf("\n=== [VM KERNEL]: VEGREHAJTO MOTOR INDUL ===\n");
 
-    /* Végigpásztázzuk a JELEN szalagját a használt memóriáig */
     int i;
     for (i = 0; i < vm->used_memory; i++) {
         unsigned char opcode = vm->memory_current[i][0];
 
-        /* A Fizikai Elágazás (Ide jön majd a te saját logikád!) */
+        /* 1. TÖRVÉNY: TÚLÉLÉS.
+           Alapértelmezésben a Jelen rekesze átmásolódik a Jövő rekeszébe.
+           Ha semmi nem változtatja meg, akkor megmarad! */
+        memcpy(vm->memory_next[i], vm->memory_current[i], 32);
+
+        /* 2. TÖRVÉNY: MUTÁCIÓ (A Fizikai Elágazás) */
         switch(opcode) {
             case 0xFF:
-                printf("[EXEC 0xFF]: GENEZIS esemeny a %d. rekeszben!\n", i);
+                printf("[EXEC 0xFF]: GENEZIS a %d. rekeszben. Stabilizalom az entitast.\n", i);
                 break;
+
             case 0xFE:
-                printf("[EXEC 0xFE]: MUTACIO esemeny a %d. rekeszben! (Cel dimenzio: %d)\n", i, vm->memory_current[i][1]);
+                printf("[EXEC 0xFE]: MUTACIO a %d. rekeszben! Beavatkozas a Jovobe!\n", i);
+                /* FIZIKAI BEAVATKOZÁS: A Mutáció parancs felülírja a KÖVETKEZŐ rekeszt a Jövőben! */
+                if (i + 1 < VM_ARENA_SIZE) {
+                    /* A következő rekesz első bájtját kőkeményen átírjuk 0x42-re! */
+                    vm->memory_next[i + 1][0] = 0x42;
+                    printf("   -> A(z) %d. rekesz sorsa megpecsetelve: 0x42 lesz a Tick utan!\n", i + 1);
+                }
                 break;
+
             case 0x01:
-                printf("[EXEC 0x01]: TOKEN (Os-ige) a %d. rekeszben! A geleres elkezdodik...\n", i);
+                printf("[EXEC 0x01]: TOKEN a %d. rekeszben. Varakozas a fuziora.\n", i);
                 break;
-            case 0x00:
-                /* Üres rekesz, átugorjuk */
-                break;
+
+            // case 0x00:
+                // break;
+
             default:
-                printf("[EXEC %02X]: Ismeretlen OP_CODE a %d. rekeszben.\n", opcode, i);
                 break;
         }
     }
