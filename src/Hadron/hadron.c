@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "keywords.h"
 #include "lexicon.h"
 #include "macro.h"
 #include "vm.h"
@@ -47,55 +46,86 @@ void vm_state_transition(HadronVM* vm) {
     }
 }
 
-void process_hadron_dimension(FILE* source_file, HadronVM* vm) {
-    /* 1. BEÖMLÉS (Ugyanaz marad) */
-    size_t flooded_bytes = fread(staging_arena, 1, STAGING_SIZE, source_file);
-    if (flooded_bytes == 0) return;
+/* ========================================================================= */
+/* A HADRON SZEME: KARAKTERENKÉNTI ÁLLAPOTGÉP (VAS-SZIGOR AKTIVÁLVA)         */
+/* ========================================================================= */
+void process_hadron_dimension(FILE* file, HadronVM* vm) {
+    char buffer[256]; /* A Zsebünk (Puffer) */
+    int buf_idx = 0;
+    int ch; /* Az éppen beolvasott kőkemény bájt */
 
-    char buffer[STAGING_SIZE + 1];
-    strncpy(buffer, staging_arena, flooded_bytes);
-    buffer[flooded_bytes] = '\0';
+    printf("\n[LEXER]: Karakter-Porszivo inditasa. Vas-szigor aktiv.\n");
 
-    /* 2. A FINOMHANGOLT SZEM: MOSTANTÓL CSAK A SZÓKÖZT ÉS ÚJSORT VÁGJUK LE!
-       Így a '->' és a ';' önálló szavakként (tokenként) is láthatóak maradnak! */
-    char* current_word = strtok(buffer, " \n\t\r");
+    /* Végtelen porszívó: amíg nincs vége a fájlnak (EOF) */
+    while ((ch = fgetc(file)) != EOF) {
 
-    while (current_word != NULL) {
+        /* 1. SZABÁLY: SZÓKÖZÖK ÉS ENTEREK (A Zseb ürítése) */
+        if (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r') {
+            if (buf_idx > 0) {
+                buffer[buf_idx] = '\0'; /* Lezárjuk a szót */
 
-        /* A) Megkérdezzük a Szótárat (Ős-igék) */
-        const KeywordDefinition* kw_def = lookup_keyword(current_word);
-
-        if (kw_def != NULL) {
-            /* Ős-ige! Betoljuk a szalagra! */
-            if (kw_def->lex_enum == KW_TOKEN || kw_def->lex_enum == KW_PRIVILEGED || kw_def->lex_enum == KW_HADRON) {
-                unsigned char payload[32] = {0};
-                payload[0] = kw_def->vm_opcode;
-                vm_push_token(vm, payload);
+                /* ITT JÖN A VAS-SZIGOR: Ha a szó "token", beletesszük, különben PÁNIK! */
+                if (strcmp(buffer, "token") == 0) {
+                    unsigned char payload[32] = {0}; payload[0] = 0x01;
+                    vm_push_token(vm, payload);
+                } else {
+                    printf("\n[VM KERNEL PANIK]: Halott adat a dimenzioban! Ismeretlen entitas: '%s'\n", buffer);
+                    exit(1);
+                }
+                buf_idx = 0; /* Zseb kinullázása */
             }
-        }
-        /* B) BEOLVASZTOTT RÉGI MOTOR: Kőkemény Topológia felismerés! */
-        else if (strcmp(current_word, "->") == 0) {
-            /* Megtaláltuk az Átmenet jelét! Meghívjuk a Dimenzióváltást! */
-            vm_state_transition(vm);
-        }
-        else if (strcmp(current_word, ";") == 0) {
-            /* SZABÁLY-LEZÁRÁS LOGIKÁJA AKTIVÁLVA! */
-            unsigned char payload[32] = {0};
-            payload[0] = 0xEE; /* A kőkemény 0xEE OP_CODE */
-            vm_push_token(vm, payload);
-            /* Opcionális: ki is írhatjuk, hogy a Lexer látta */
-            /* printf("[LEXER]: Pontosvesszo megtalalva. Szabaly lezarva.\n"); */
-        }
-        /* ===== ÚJ FIZIKAI TÖRVÉNY: A SZIGORÚ FORDÍTÓ PAJZSA ===== */
-        else {
-            printf("\n[VM KERNEL PANIK]: Szigoru Fordito aktivalva!\n");
-            printf("[HIBA]: Szintaktikai anomalia a dimenzioban! Ismeretlen entitas: '%s'\n", current_word);
-            printf("A Vas fizikailag leallitja a fuziot.\n");
-            exit(1); /* 1-es hibakóddal kíméletlenül kilőjük a programot! */
+            continue; /* Ugrás a következő karakterre! */
         }
 
-        /* Ugrás a következő szóra */
-        current_word = strtok(NULL, " \n\t\r");
+        /* 2. SZABÁLY: AZ IRÁNYÍTÓPULTOK (Operátorok azonnali lecsapása) */
+        if (ch == '[' || ch == ']' || ch == ':' || ch == ';' || ch == '{' || ch == '}') {
+            /* Ha volt valami a zsebben (pl. egy név), azt gyorsan lementjük Payloadként! */
+            if (buf_idx > 0) {
+                buffer[buf_idx] = '\0';
+                /* Most a neveket egyelőre csak kiírjuk, de később beégetjük a 31 bájtos Raktérbe! */
+                printf("[LEXER]: Nev-Payload azonositva: '%s'\n", buffer);
+                buf_idx = 0;
+            }
+
+            /* A fizikai operátor letétele a szalagra */
+            unsigned char payload[32] = {0};
+            switch(ch) {
+                case '[': payload[0] = 0x1A; printf("[LEXER]: 0x1A (Tomb Nyitas)\n"); break;
+                case ']': payload[0] = 0x1B; printf("[LEXER]: 0x1B (Tomb Zaras)\n"); break;
+                case ':': payload[0] = 0x1C; printf("[LEXER]: 0x1C (Kettospont)\n"); break;
+                case ';': payload[0] = 0xEE; printf("[LEXER]: 0xEE (Szabaly Vege)\n"); break;
+                case '{': payload[0] = 0x1D; printf("[LEXER]: 0x1D (Blokk Nyitas)\n"); break;
+                case '}': payload[0] = 0x1E; printf("[LEXER]: 0x1E (Blokk Zaras)\n"); break;
+            }
+            vm_push_token(vm, payload);
+            continue;
+        }
+
+        /* 3. SZABÁLY: ÖSSZETETT NYILAK (-> és <-) */
+        if (ch == '-' || ch == '<') {
+            if (buf_idx > 0) { /* Zseb ürítése */
+                buffer[buf_idx] = '\0';
+                printf("[LEXER]: Nev-Payload azonositva: '%s'\n", buffer);
+                buf_idx = 0;
+            }
+
+            int next_ch = fgetc(file); /* Előrenézünk 1 bájtot! */
+            if (ch == '-' && next_ch == '>') {
+                unsigned char payload[32] = {0}; payload[0] = 0xFE; /* Mutáció/Nyíl */
+                vm_push_token(vm, payload);
+            } else if (ch == '<' && next_ch == '-') {
+                unsigned char payload[32] = {0}; payload[0] = 0xFD; /* Vissza-Injektálás */
+                vm_push_token(vm, payload);
+            } else {
+                /* HA BÁRMI MÁS, AZ HALOTT ADAT! KERNEL PÁNIK! */
+                printf("\n[VM KERNEL PANIK]: Ertelmetlen operator: '%c%c'\n", ch, next_ch);
+                exit(1);
+            }
+            continue;
+        }
+
+        /* 4. SZABÁLY: NORMÁL ÉPÍTKEZÉS (Betűk gyűjtése a zsebbe) */
+        buffer[buf_idx++] = (char)ch;
     }
 }
 
