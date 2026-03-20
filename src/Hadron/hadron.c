@@ -47,6 +47,29 @@ void vm_state_transition(HadronVM* vm) {
 }
 
 /* ========================================================================= */
+/* A LEGKISEBB HATÁS ELVE: KÖZPONTI MEMÓRIA-INJEKTOR PROTOKOLL               */
+/* ========================================================================= */
+void flush_buffer_to_tape(HadronVM* vm, char* buffer, int* buf_idx) {
+    /* Ha a Zseb üres, a gép némán, zéró ciklusidővel visszalép */
+    if (*buf_idx == 0) return;
+
+    /* Szó lezárása a memóriában */
+    buffer[*buf_idx] = '\0';
+
+    unsigned char name_payload[32] = {0};
+    name_payload[0] = 0x02; /* 0x02 OP_CODE: NÉV/ADAT Payload */
+
+    /* Vas-szintű másolás: a stringet beletoljuk a rekesz 1-31. bájtjaiba */
+    strncpy((char*)&name_payload[1], buffer, 31);
+
+    printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve a szalagra: '%s'\n", buffer);
+    vm_push_token(vm, name_payload); /* Rányomjuk a Vasra */
+
+    /* Zseb kinullázása a referencián keresztül! Ezt sosem felejtjük el többé. */
+    *buf_idx = 0;
+}
+
+/* ========================================================================= */
 /* A HADRON SZEME: KARAKTERENKÉNTI ÁLLAPOTGÉP (VAS-SZIGOR AKTIVÁLVA)         */
 /* ========================================================================= */
 void process_hadron_dimension(FILE* file, HadronVM* vm) {
