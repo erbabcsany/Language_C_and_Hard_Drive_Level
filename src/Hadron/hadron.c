@@ -47,26 +47,30 @@ void vm_state_transition(HadronVM* vm) {
 }
 
 /* ========================================================================= */
-/* A LEGKISEBB HATÁS ELVE: KÖZPONTI MEMÓRIA-INJEKTOR PROTOKOLL               */
+/* UNIVERZÁLIS ZSEB ÜRÍTÉS: KULCSSZÓ VAGY PAYLOAD ELBÍRÁLÁS                  */
 /* ========================================================================= */
 void flush_buffer_to_tape(HadronVM* vm, char* buffer, int* buf_idx) {
-    /* Ha a Zseb üres, a gép némán, zéró ciklusidővel visszalép */
-    if (*buf_idx == 0) return;
+    if (*buf_idx == 0) return; /* Üres zsebnél nincs dolgunk */
 
-    /* Szó lezárása a memóriában */
-    buffer[*buf_idx] = '\0';
+    buffer[*buf_idx] = '\0'; /* Szó lezárása */
 
-    unsigned char name_payload[32] = {0};
-    name_payload[0] = 0x02; /* 0x02 OP_CODE: NÉV/ADAT Payload */
+    /* 1. VIZSGÁLAT: Ez egy ismert KULCSSZÓ (Ős-ige)? */
+    if (strcmp(buffer, "token") == 0) {
+        unsigned char payload[32] = {0};
+        payload[0] = 0x01;
+        printf("[LEXER]: 0x01 (Kulcsszo) felismerve: TOKEN\n");
+        vm_push_token(vm, payload);
+    }
+    /* 2. VIZSGÁLAT: Ha nem kulcsszó, akkor az kőkeményen egy NÉV/ADAT (Payload)! */
+    else {
+        unsigned char name_payload[32] = {0};
+        name_payload[0] = 0x02; /* 0x02 OP_CODE */
+        strncpy((char*)&name_payload[1], buffer, 31);
+        printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve: '%s'\n", buffer);
+        vm_push_token(vm, name_payload);
+    }
 
-    /* Vas-szintű másolás: a stringet beletoljuk a rekesz 1-31. bájtjaiba */
-    strncpy((char*)&name_payload[1], buffer, 31);
-
-    printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve a szalagra: '%s'\n", buffer);
-    vm_push_token(vm, name_payload); /* Rányomjuk a Vasra */
-
-    /* Zseb kinullázása a referencián keresztül! Ezt sosem felejtjük el többé. */
-    *buf_idx = 0;
+    *buf_idx = 0; /* Zseb kinullázása */
 }
 
 /* ========================================================================= */
@@ -84,35 +88,14 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
 
         /* 1. SZABÁLY: SZÓKÖZÖK ÉS ENTEREK (A Zseb ürítése) */
         if (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r') {
-            if (buf_idx > 0) {
-                buffer[buf_idx] = '\0'; /* Lezárjuk a szót */
-
-                /* ITT JÖN A VAS-SZIGOR: Ha a szó "token", beletesszük, különben PÁNIK! */
-                if (strcmp(buffer, "token") == 0) {
-                    unsigned char payload[32] = {0}; payload[0] = 0x01;
-                    vm_push_token(vm, payload);
-                } else {
-                    printf("\n[VM KERNEL PANIK]: Halott adat a dimenzioban! Ismeretlen entitas: '%s'\n", buffer);
-                    exit(1);
-                }
-                buf_idx = 0; /* Zseb kinullázása */
-            }
+            flush_buffer_to_tape(vm, buffer, &buf_idx);
             continue; /* Ugrás a következő karakterre! */
         }
 
         /* 2. SZABÁLY: AZ IRÁNYÍTÓPULTOK (A Kvantum Zár beépítve!) */
         if (ch == '[' || ch == ']' || ch == ':' || ch == ';' || ch == '{' || ch == '}' || ch == '?') {
             /* Ha volt valami a zsebben, azt gyorsan lementjük Payloadként! */
-            if (buf_idx > 0) {
-                buffer[buf_idx] = '\0';
-                unsigned char name_payload[32] = {0};
-                name_payload[0] = 0x02; /* 0x02: NÉV/ADAT Payload */
-                strncpy((char*)&name_payload[1], buffer, 31);
-
-                printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve: '%s'\n", buffer);
-                vm_push_token(vm, name_payload);
-                buf_idx = 0;
-            }
+            flush_buffer_to_tape(vm, buffer, &buf_idx);
 
             /* A fizikai operátor letétele a szalagra */
             unsigned char payload[32] = {0};
@@ -132,11 +115,7 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
 
         /* 3. SZABÁLY: ÖSSZETETT NYILAK (-> és <-) */
         if (ch == '-' || ch == '<') {
-            if (buf_idx > 0) { /* Zseb ürítése */
-                buffer[buf_idx] = '\0';
-                printf("[LEXER]: Nev-Payload azonositva: '%s'\n", buffer);
-                buf_idx = 0;
-            }
+            flush_buffer_to_tape(vm, buffer, &buf_idx);
 
             int next_ch = fgetc(file); /* Előrenézünk 1 bájtot! */
             if (ch == '-' && next_ch == '>') {
