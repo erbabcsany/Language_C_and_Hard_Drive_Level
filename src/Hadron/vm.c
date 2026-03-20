@@ -46,6 +46,26 @@ void vm_run(HadronVM* vm) {
                 printf("[EXEC 0x01]: TOKEN a %d. rekeszben. Varakozas a fuziora.\n", i);
                 break;
 
+            /* ========================================================= */
+            /* A PREDICATED EXECUTION (FELTÉTELES VÉGREHAJTÁS) KAPUI     */
+            /* ========================================================= */
+
+            case 0x1F:
+                /* A Kvantum Zár (?) - Itt fogjuk kiértékelni a feltételt */
+                printf("[VM KERNEL]: [EXEC 0x1F] -> Kvantum Zar (?) AKTIVALVA.\n");
+
+                /* Később ide jön a Vas-szintű logika:
+                   pl. if (vm->last_math_result == 0) vm->ignore_next = 1; */
+                break;
+
+            case 0x1C:
+                /* A Kvantum Kapu (:) - Az alternatív útvonal / állapotfordító */
+                printf("[VM KERNEL]: [EXEC 0x1C] -> Kvantum Kapu (:) ATLEPES.\n");
+
+                /* Később ide jön a logika:
+                   pl. vm->ignore_next = !(vm->ignore_next); */
+                break;
+
             // case 0x00:
                 // break;
 
