@@ -77,23 +77,18 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
             continue; /* Ugrás a következő karakterre! */
         }
 
-        /* 2. SZABÁLY: AZ IRÁNYÍTÓPULTOK (Operátorok azonnali lecsapása) */
-        if (ch == '[' || ch == ']' || ch == ':' || ch == ';' || ch == '{' || ch == '}') {
-            /* Ha volt valami a zsebben (pl. egy név), azt gyorsan lementjük Payloadként! */
-            /* HA VOLT VALAMI A ZSEBBEN, AZT BELEÉGETJÜK A SZALAGRA! */
+        /* 2. SZABÁLY: AZ IRÁNYÍTÓPULTOK (A Kvantum Zár beépítve!) */
+        if (ch == '[' || ch == ']' || ch == ':' || ch == ';' || ch == '{' || ch == '}' || ch == '?') {
+            /* Ha volt valami a zsebben, azt gyorsan lementjük Payloadként! */
             if (buf_idx > 0) {
-                buffer[buf_idx] = '\0'; /* Szó lezárása */
-
+                buffer[buf_idx] = '\0';
                 unsigned char name_payload[32] = {0};
-                name_payload[0] = 0x02; /* 0x02 OP_CODE: Ez itt egy NÉV/ADAT! */
-
-                /* VAS-SZINTŰ MÁSOLÁS: A Zseb tartalmát beletoljuk a rekesz 1-31. bájtjaiba! */
+                name_payload[0] = 0x02; /* 0x02: NÉV/ADAT Payload */
                 strncpy((char*)&name_payload[1], buffer, 31);
 
-                printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve a szalagra: '%s'\n", buffer);
-                vm_push_token(vm, name_payload); /* Rányomjuk a Vasra! */
-
-                buf_idx = 0; /* Zseb kinullázása a következő szónak */
+                printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve: '%s'\n", buffer);
+                vm_push_token(vm, name_payload);
+                buf_idx = 0;
             }
 
             /* A fizikai operátor letétele a szalagra */
@@ -101,11 +96,12 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
             switch(ch) {
                 case '[': payload[0] = 0x1A; printf("[LEXER]: 0x1A (Tomb Nyitas)\n"); break;
                 case ']': payload[0] = 0x1B; printf("[LEXER]: 0x1B (Tomb Zaras)\n"); break;
-                case ':': payload[0] = 0x1C; printf("[LEXER]: 0x1C (Kettospont)\n"); break;
+                case ':': payload[0] = 0x1C; printf("[LEXER]: 0x1C (Kettospont / Kapu)\n"); break;
                 case ';': payload[0] = 0xEE; printf("[LEXER]: 0xEE (Szabaly Vege)\n"); break;
                 case '{': payload[0] = 0x1D; printf("[LEXER]: 0x1D (Blokk Nyitas)\n"); break;
                 case '}': payload[0] = 0x1E; printf("[LEXER]: 0x1E (Blokk Zaras)\n"); break;
-                default: ;
+                case '?': payload[0] = 0x1F; printf("[LEXER]: 0x1F (Kvantum Zar / Feltetel)\n"); break; /* <-- AZ ÚJ DIMENZIÓ */
+                default: ; /* A Szellem Utasítás, amit tegnap megbeszéltünk */
             }
             vm_push_token(vm, payload);
             continue;
