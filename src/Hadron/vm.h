@@ -36,6 +36,7 @@ typedef struct {
 
     int used_memory;                 /* Mutató: Mennyi van már lefoglalva? */
     int absolute_head;
+    int quantum_flag;            /* 1 = Átengedés (Igaz), 0 = Megsemmisítés (Hamis) */
 
     int system_state;                /* A Rendszer állapota (0 = Void, 1 = Spark) */
     bool is_locked;                  /* A Kvantum-Lakat fizikai állapota */

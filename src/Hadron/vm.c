@@ -82,6 +82,7 @@ void vm_init(HadronVM* vm) {
     memset(vm->memory_next, 0, sizeof(vm->memory_next));
     vm->used_memory = 0;
     vm->system_state = 0;
+    vm->quantum_flag = 1;
     printf("[VM HARDVER]: Vas bekapcsolva. Jelen es Jovo szalagok (1024) tisztaak.\n");
 }
 
