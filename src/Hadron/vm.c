@@ -52,7 +52,7 @@ void vm_run(HadronVM* vm) {
 
             case 0x1F:
                 /* A Kvantum Zár (?) - Itt fogjuk kiértékelni a feltételt */
-                printf("[VM KERNEL]: [EXEC 0x1F] -> Kvantum Zar (?) AKTIVALVA.\n");
+                printf("[VM KERNEL]: [EXEC 0x1F] -> Kvantum Zar (?) aktiválva.\n");
 
                 /* Később ide jön a Vas-szintű logika:
                    pl. if (vm->last_math_result == 0) vm->ignore_next = 1; */
@@ -60,7 +60,7 @@ void vm_run(HadronVM* vm) {
 
             case 0x1C:
                 /* A Kvantum Kapu (:) - Az alternatív útvonal / állapotfordító */
-                printf("[VM KERNEL]: [EXEC 0x1C] -> Kvantum Kapu (:) ATLEPES.\n");
+                printf("[VM KERNEL]: [EXEC 0x1C] -> Kvantum Kapu (:) átlépés.\n");
 
                 /* Később ide jön a logika:
                    pl. vm->ignore_next = !(vm->ignore_next); */
@@ -82,8 +82,11 @@ void vm_init(HadronVM* vm) {
     memset(vm->memory_next, 0, sizeof(vm->memory_next));
     vm->used_memory = 0;
     vm->system_state = 0;
-    vm->quantum_flag = 1;
     printf("[VM HARDVER]: Vas bekapcsolva. Jelen es Jovo szalagok (1024) tisztaak.\n");
+    vm->instruction_pointer = 0;
+
+    /* Alapértelmezett állapot: A Jövő nyitva áll */
+    vm->quantum_flag = 1;
 }
 
 /* 2. ADAT BETOLÁSA: A Bootolás (Parser) a Jelenbe pakol */

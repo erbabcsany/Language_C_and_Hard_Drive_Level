@@ -23,11 +23,19 @@
 
 #define VM_ARENA_SIZE 1024  /* A Fluxus Sandbox maximális fizikai mérete */
 
+/* ========================================================================= */
+/* A HADRON UNIVERZUM FIZIKAI KORLÁTAI                                       */
+/* ========================================================================= */
+#define HADRON_TAPE_SIZE 4096 /* 4 Kilobájtos (4096 bájt) kőkemény memóriaszalag */
+
 typedef struct {
     unsigned char data[32];
 } RawToken;
 
 typedef struct {
+    unsigned char tape[HADRON_TAPE_SIZE]; /* 0. Dimenzió (Memória) */
+    int instruction_pointer;             /* Az Idő Nyila */
+
     RawToken memory_arena[VM_ARENA_SIZE]; /* A nyers RAM (A Meder) */
 
     /* A Kettéhasított Téridő: */
