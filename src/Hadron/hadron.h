@@ -11,6 +11,7 @@
    hogy a C fordító kétszer töltse be a fájlt és összeomoljon. */
 #ifndef HADRON_H
 #define HADRON_H
+#include <stdio.h>
 #include "macro.h"
 #include "vm.h"
 
@@ -33,6 +34,7 @@ typedef struct {
 
 /* A Kapu: Egy tömb, ami a futás során telik meg az új, felfedezett szabályokkal */
 extern DynamicRule symbol_table[4096];
+extern int registered_rules;
 
 /* hadron.h - A Lexer alapjai */
 
@@ -45,7 +47,15 @@ typedef enum {
    KW_HADRON,        /* "hadron" */
 
    /* A Meta-ige (Szabályalkotó) */
-   KW_SYNTAX         /* "syntax" */
+   KW_SYNTAX,        /* "syntax" */
+
+   /* A HADRON-FLUXUS HARDVERES ÖSSZEKÖTÉSE */
+   KW_DRAW,          /* "draw" */
+   KW_CLEAR,         /* "clear" */
+
+   /* SYSTEM FLOW */
+   KW_WAIT,          /* "wait" */
+   KW_HALT           /* "halt" */
 } HadronKeyword;
 
 /* =========================================================
@@ -90,6 +100,7 @@ void hadron_vm_init(void); /* A VM bekapcsolása */
 str read_hadron_file(const str filename);
 void hadron_lexer(const str source, Token* output_token);
 void hadron_parser(HadronVM* hadron_vm, const Token* token);
+void process_hadron_dimension(FILE* file, HadronVM* vm);
 void hadron_main(void);
 
 #endif /* HADRON_H */

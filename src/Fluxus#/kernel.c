@@ -7,10 +7,32 @@
    FIGYELEM: Ez a kod operacios rendszer nelkul, egyenesen a vason fut!
    ===================================================================== */
 
+#include <stdio.h>
+#include "kernel.h"
+#include "../Hadron/hadron.h" /* Hadron beemelése a Kernelbe */
+#include "../Hadron/vm.h"
+
+#if defined(__linux__) || defined(__APPLE__)
+#include <unistd.h>
+#define SLEEP_MS(ms) usleep((ms) * 1000)
+#elif defined(_WIN32)
+#include <windows.h>
+#define SLEEP_MS(ms) Sleep(ms)
+#else
+#define SLEEP_MS(ms)
+#endif
+
 /* 1. HARDVERES MEMORIA CIMEK ES MERETEK */
 #define VGA_ADDRESS 0xB8000
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
+
+/* SIMULATION DETECTION */
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__APPLE__) || defined(_WIN32)
+#define IS_SIMULATION 1
+#else
+#define IS_SIMULATION 0
+#endif
 
 /* Szinek (Hexadecimalis kódok a videokartyanak) */
 #define COLOR_GREEN     0x0A
@@ -21,14 +43,25 @@
 /* 2. HARDVERES PORT OLVASO (Assembly a C-ben!) */
 /* Ezzel hallgatozunk a 0x60-as alaplapi porton a billentyuzet utan. */
 unsigned char inb(unsigned short port) {
-    unsigned char result;
+    unsigned char result = 0;
+#if IS_SIMULATION
+    /* Szimuláció alatt nem férünk hozzá a valódi portokhoz */
+    (void)port;
+    return 0;
+#else
     __asm__ volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
     return result;
+#endif
 }
 
 /* 3. A KÖZVETLEN VIDEÓ-MEMÓRIA MUTATÓ */
 /* A volatile szo mondja meg a C-nek: "Ne nyulj hozza, ez fizikai drot!" */
+#if IS_SIMULATION
+unsigned short vga_sim[VGA_WIDTH * VGA_HEIGHT];
+volatile unsigned short* vga_buffer = vga_sim;
+#else
 volatile unsigned short* vga_buffer = (volatile unsigned short*)VGA_ADDRESS;
+#endif
 
 /* PIXEL RAJZOLO FUGGVENY (Kiszamolja az 1D memoriat a 2D koordinatabol) */
 void draw_particle(int x, int y, char c, unsigned char color) {
@@ -41,10 +74,10 @@ void draw_particle(int x, int y, char c, unsigned char color) {
 }
 
 /* SZOVEG KIRO FUGGVENY (Mivel nincs printf, nekunk kell megiirni) */
-void print_string(int x, int y, const char* str, unsigned char color) {
+void print_string(int x, int y, const char* text, unsigned char color) {
     int i = 0;
-    while (str[i] != '\0') {
-        draw_particle(x + i, y, str[i], color);
+    while (text[i] != '\0') {
+        draw_particle(x + i, y, text[i], color);
         i++;
     }
 }
@@ -64,39 +97,51 @@ void clear_screen() {
    ===================================================================== */
 extern void kernel_main() {
     unsigned char scan_code;
-    int particle_x = 40;
-    int particle_y = 12;
     volatile int delay; /* Lassito valtozo, hogy a szemunk kovetni tudja */
 
-    /* Pálya elokeszitese */
-    clear_screen();
-    print_string(0, 0, "=== FLUXUS OS : BARE METAL KERNEL AKTIV ===", COLOR_GREEN);
-    print_string(0, 24, "NYOMD MEG AZ 'I' BETUT AZ INJEKTALASHOZ!", COLOR_WHITE);
+    /* --- HADRON INTEGRÁCIÓ --- */
+    HadronVM vm;
+    vm_init(&vm);
 
-    /* A HALÁL-HUROK (A fizikai motor vegtelen ciklusa) */
-    while (1) {
+    printf("[FLUXUS KERNEL]: Hadron VM inicializalva.\n");
 
-        /* Figyeljuk a billentyuzetet (I betu scan kódja: 0x17) */
-        scan_code = inb(0x60);
+    /* Betöltjük az "Ős-programot" */
+    FILE* file = fopen("core.hadron", "r");
+    if (file) {
+        printf("[FLUXUS KERNEL]: core.hadron betoltese a Jovo szalagra...\n");
+        process_hadron_dimension(file, &vm);
+        fclose(file);
 
-        if (scan_code == 0x17) {
+        /* SZILARDITAS: A Jövő Jelenne válik (Boot Tick) */
+        vm_tick(&vm);
 
-            /* 1. Eltuntetjuk a reszecsket a regi helyerol (urzzuk a memoriat) */
-            draw_particle(particle_x, particle_y, ' ', COLOR_WHITE);
-
-            /* 2. Leptetjuk a fizikat jobbra */
-            particle_x++;
-            if (particle_x >= VGA_WIDTH) {
-                particle_x = 0; /* Ha kimegy a kepernyorol, visszajon bal oldalt */
-            }
-
-            /* 3. Kirajzoljuk az uj helyere (Piros O) */
-            draw_particle(particle_x, particle_y, 'O', COLOR_RED);
-
-            /* 4. Hardveres kesleltetes (Mivel a processzor tul gyors lenne) */
-            for (delay = 0; delay < 500000; delay++) {
-                /* Ures ciklus, csak egeti az orajelet, hogy lassuljon a mozgás */
-            }
-        }
+        vm_dump_memory(&vm, 32);
+    } else {
+        printf("[FLUXUS KERNEL PANIK]: core.hadron nem talalhato!\n");
     }
+
+    /* Pálya elokeszitese */
+    if (IS_SIMULATION) {
+        printf("[VM KERNEL]: Szimulációs mód aktív. Nincs valódi hardver-hozzáférés.\n");
+    }
+    clear_screen();
+    print_string(0, 0, "=== FLUXUS OS + HADRON CORE AKTIV ===", COLOR_GREEN);
+    print_string(0, 24, "HADRON INSTRUKCIOK VEGREHAJTASA...", COLOR_WHITE);
+
+    /* A RENDSZER ÉLETCIKLUSA (A Constitution Rule 1 alapján) */
+    /* Szekvenciális haladás az Idő Nyilán (nincs spinning while(1) hurok). */
+    /* Ha a rendszer várakozik, befagyasztjuk az állapotot, amíg adat nem érkezik. */
+    vm_run(&vm);
+
+    if (vm.system_state == VM_STATE_WAITING) {
+        printf("\n[FLUXUS KERNEL]: A rendszer VARAKOZIK. Adatbefecskendezesre var...\n");
+        printf("[VAS-SZIGOR]: Nyomj ENTER-t a szimulalt megszakitashoz (Interrupt)...\n");
+        getchar();
+        vm.system_state = VM_STATE_ACTIVE;
+        vm_run(&vm); /* Folytatjuk pontosan onnan! */
+    }
+
+    vm_dump_memory(&vm, 32); /* THE LOOSE RULE: Ellenorizzuk a torlest! */
+    
+    printf("[FLUXUS KERNEL]: A rendszer leallt. Halal-hurok vege.\n");
 }

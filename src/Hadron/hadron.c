@@ -4,10 +4,12 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "lexicon.h"
 #include "macro.h"
 #include "vm.h"
+#include "keywords.h"
 
 #define STAGING_SIZE 4096
 
@@ -27,14 +29,14 @@ void vm_state_transition(HadronVM* vm) {
         printf("-> [VM HARDVER]: *** GENEZIS ESEMENY AKTIVALVA ***\n");
         transition_payload[0] = 0xFF; /* Genezis OP_CODE */
         transition_payload[1] = 1;
-        vm_push_token(vm, transition_payload);
+        write_to_hadron(vm, transition_payload, 32);
     }
     else if (vm->system_state == 1) {
         vm->system_state = 2;
         printf("\n[VM WARNING]: Ujabb atmenet erzekelve! A szabaly felulirva.\n");
         transition_payload[0] = 0xFE; /* Mutáció OP_CODE */
         transition_payload[1] = 2;
-        vm_push_token(vm, transition_payload);
+        write_to_hadron(vm, transition_payload, 32);
     }
     else {
         vm->system_state++;
@@ -42,33 +44,59 @@ void vm_state_transition(HadronVM* vm) {
                vm->system_state - 1, vm->system_state);
         transition_payload[0] = 0xFE;
         transition_payload[1] = (unsigned char)vm->system_state;
-        vm_push_token(vm, transition_payload);
+        write_to_hadron(vm, transition_payload, 32);
     }
 }
 
 /* ========================================================================= */
 /* UNIVERZÁLIS ZSEB ÜRÍTÉS: KULCSSZÓ VAGY PAYLOAD ELBÍRÁLÁS                  */
 /* ========================================================================= */
-void flush_buffer_to_tape(HadronVM* vm, char* buffer, int* buf_idx) {
+void flush_buffer_to_tape(HadronVM* vm, char* buffer, int* buf_idx, int* arg_idx) {
     if (*buf_idx == 0) return; /* Üres zsebnél nincs dolgunk */
 
     buffer[*buf_idx] = '\0'; /* Szó lezárása */
 
+    const KeywordDefinition* kw = lookup_keyword(buffer);
+
     /* 1. VIZSGÁLAT: Ez egy ismert KULCSSZÓ (Ős-ige)? */
-    if (strcmp(buffer, "token") == 0) {
+    if (kw != NULL) {
         unsigned char payload[32] = {0};
-        payload[0] = 0x01;
-        printf("[LEXER]: 0x01 (Kulcsszo) felismerve: TOKEN\n");
-        vm_push_token(vm, payload);
+        payload[0] = kw->vm_opcode;
+        printf("[LEXER]: 0x%02X (Kulcsszo) felismerve: %s\n", payload[0], kw->word);
+        write_to_hadron(vm, payload, 32);
+        *buf_idx = 0;
+        *arg_idx = 1; /* A következő szám az 1. indexre kerül */
+        return;
     }
-    /* 2. VIZSGÁLAT: Ha nem kulcsszó, akkor az kőkeményen egy NÉV/ADAT (Payload)! */
-    else {
-        unsigned char name_payload[32] = {0};
-        name_payload[0] = 0x02; /* 0x02 OP_CODE */
-        strncpy((char*)&name_payload[1], buffer, 31);
-        printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve: '%s'\n", buffer);
-        vm_push_token(vm, name_payload);
+    /* 2. VIZSGÁLAT: Szám-e? (Argumentum befecskendezés) */
+    bool is_num = true;
+    int k;
+    for (k = 0; buffer[k]; k++) {
+        if (!isdigit(buffer[k]) && buffer[k] != '-') { is_num = false; break; }
     }
+
+    if (is_num && vm->used_memory > 0) {
+        unsigned char val = (unsigned char)atoi(buffer);
+        int last = vm->used_memory - 1;
+
+        if (*arg_idx < 32) {
+            /* Rule 2: Az adat is a Jövőbe (memory_next) kerül! */
+            vm->memory_next[last][*arg_idx] = val;
+            printf("[LEXER]: Adat (%d) hozzaadva az utolso tokenhez (Op: 0x%02X) az %d. indexen.\n",
+                   val, vm->memory_next[last][0], *arg_idx);
+            (*arg_idx)++;
+            *buf_idx = 0;
+            return;
+        }
+    }
+
+    /* 3. VIZSGÁLAT: Ha nem kulcsszó, akkor az kőkeményen egy NÉV/ADAT (Payload)! */
+    unsigned char name_payload[32] = {0};
+    name_payload[0] = 0x02; /* 0x02 OP_CODE */
+    strncpy((char*)&name_payload[1], buffer, 31);
+    printf("[LEXER]: 0x02 (Nev-Payload) befecskendezve: '%s'\n", buffer);
+    write_to_hadron(vm, name_payload, 32);
+    *arg_idx = 1;
 
     *buf_idx = 0; /* Zseb kinullázása */
 }
@@ -79,6 +107,7 @@ void flush_buffer_to_tape(HadronVM* vm, char* buffer, int* buf_idx) {
 void process_hadron_dimension(FILE* file, HadronVM* vm) {
     char buffer[256]; /* A Zsebünk (Puffer) */
     int buf_idx = 0;
+    int arg_idx = 1; /* Argumentum index követése */
     int ch; /* Az éppen beolvasott kőkemény bájt */
 
     printf("\n[LEXER]: Karakter-Porszivo inditasa. Vas-szigor aktiv.\n");
@@ -88,14 +117,14 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
 
         /* 1. SZABÁLY: SZÓKÖZÖK ÉS ENTEREK (A Zseb ürítése) */
         if (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r') {
-            flush_buffer_to_tape(vm, buffer, &buf_idx);
+            flush_buffer_to_tape(vm, buffer, &buf_idx, &arg_idx);
             continue; /* Ugrás a következő karakterre! */
         }
 
         /* 2. SZABÁLY: AZ IRÁNYÍTÓPULTOK (A Kvantum Zár beépítve!) */
         if (ch == '[' || ch == ']' || ch == ':' || ch == ';' || ch == '{' || ch == '}' || ch == '?') {
             /* Ha volt valami a zsebben, azt gyorsan lementjük Payloadként! */
-            flush_buffer_to_tape(vm, buffer, &buf_idx);
+            flush_buffer_to_tape(vm, buffer, &buf_idx, &arg_idx);
 
             /* A fizikai operátor letétele a szalagra */
             unsigned char payload[32] = {0};
@@ -109,31 +138,33 @@ void process_hadron_dimension(FILE* file, HadronVM* vm) {
                 case '?': payload[0] = 0x1F; printf("[LEXER]: 0x1F (Kvantum Zar / Feltetel)\n"); break; /* <-- AZ ÚJ DIMENZIÓ */
                 default: ; /* A Szellem Utasítás, amit tegnap megbeszéltünk */
             }
-            vm_push_token(vm, payload);
+            write_to_hadron(vm, payload, 32);
+            arg_idx = 1; /* Reset arg index for operators too */
             continue;
         }
 
-        /* 3. SZABÁLY: ÖSSZETETT NYILAK (-> és <-) */
-        if (ch == '-' || ch == '<') {
-            flush_buffer_to_tape(vm, buffer, &buf_idx);
-
-            int next_ch = fgetc(file); /* Előrenézünk 1 bájtot! */
-            if (ch == '-' && next_ch == '>') {
+        /* 3. SZABÁLY: ÖSSZETETT NYILAK (->) */
+        if (ch == '-') {
+            /* Előrenézünk 1 bájtot! */
+            int next_ch = fgetc(file); 
+            
+            if (next_ch == '>') {
+                flush_buffer_to_tape(vm, buffer, &buf_idx, &arg_idx);
                 unsigned char payload[32] = {0}; payload[0] = 0xFE; /* Mutáció/Nyíl */
-                vm_push_token(vm, payload);
-            } else if (ch == '<' && next_ch == '-') {
-                unsigned char payload[32] = {0}; payload[0] = 0xFD; /* Vissza-Injektálás */
-                vm_push_token(vm, payload);
+                write_to_hadron(vm, payload, 32);
+                arg_idx = 1;
             } else {
-                /* HA BÁRMI MÁS, AZ HALOTT ADAT! KERNEL PÁNIK! */
-                printf("\n[VM KERNEL PANIK]: Ertelmetlen operator: '%c%c'\n", ch, next_ch);
-                exit(1);
+                /* Ha nem nyíl, akkor visszatesszük a karaktert a gépbe és betűként kezeljük */
+                ungetc(next_ch, file);
+                if (buf_idx < 255) buffer[buf_idx++] = (char)ch;
             }
             continue;
         }
 
         /* 4. SZABÁLY: NORMÁL ÉPÍTKEZÉS (Betűk gyűjtése a zsebbe) */
-        buffer[buf_idx++] = (char)ch;
+        if (buf_idx < 255) {
+            buffer[buf_idx++] = (char)ch;
+        }
     }
 }
 
@@ -235,7 +266,7 @@ void hadron_main() {
     }
 
     /* Megnezzuk a szalagot (Röntgen) */
-    vm_dump_memory(&hadron_vm, 5);
+    vm_dump_memory(&hadron_vm, 32);
 
     /* 2. FAZIS: AZ AGY (Parser/VM) rászabadul a szalagra, és értelmezi a jeleket! */
     vm_run(&hadron_vm);

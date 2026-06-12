@@ -13,6 +13,19 @@
 #define VM_PRIVILEGED 0x81  /* Bináris 1000 0001 : Token, de a legfelső "Admin" bit (0x80) be van kapcsolva! */
 #define VM_HADRON     0x41  /* Bináris 0100 0001 : Token, de a "Struktúra" bit (0x40) be van kapcsolva! */
 
+/* =========================================================
+   VGA ÉS HARDVER MŰVELETEK (Hadron-Fluxus Bridge)
+   ========================================================= */
+#define VM_VGA_DRAW   0xD1  /* Pixel rajzolása (X, Y, Char, Color) */
+#define VM_VGA_CLEAR  0xC1  /* Képernyő törlése */
+
+/* =========================================================
+   SYSTEM FLOW UTASÍTÁSOK (A Constitution Rule 1 alapján)
+   ========================================================= */
+#define VM_WAIT       0x05  /* Várakozás (Interrupt/Event) */
+#define VM_HALT       0x06  /* Teljes leállás */
+#define VM_SYNTAX     0x55  /* Dinamikus szintaxis (The Loose Rule) */
+
 /* Megjegyzés: A "syntax" ige NINCS ITT!
    Miért? Mert a "syntax" sosem jut le a Vasra! Azt a Parser elnyeli,
    hogy új szabályokat alkosson belőle a memóriában. */
@@ -46,11 +59,18 @@ typedef struct {
     int absolute_head;
     int quantum_flag;            /* 1 = Átengedés (Igaz), 0 = Megsemmisítés (Hamis) */
 
-    int system_state;                /* A Rendszer állapota (0 = Void, 1 = Spark) */
+    /* RENDSZERÁLLAPOTOK (SYSTEM STATES) */
+#define VM_STATE_VOID    0
+#define VM_STATE_SPARK   1
+#define VM_STATE_ACTIVE  2
+#define VM_STATE_WAITING 3
+#define VM_STATE_HALTED  4
+    int system_state;                /* A Rendszer állapota */
     bool is_locked;                  /* A Kvantum-Lakat fizikai állapota */
 } HadronVM;
 
 void vm_run(HadronVM* vm);
+void write_to_hadron(HadronVM* vm, unsigned char* data, int size);
 
 /* ÚJ FIZIKAI TÖRVÉNY: Az Órajel */
 void vm_tick(HadronVM* vm);

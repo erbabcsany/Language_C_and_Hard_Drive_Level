@@ -7,7 +7,7 @@
 
 unsigned char inb(unsigned short port);
 void draw_particle(int x, int y, char c, unsigned char color);
-void print_string(int x, int y, const char* str, unsigned char color);
+void print_string(int x, int y, const char* text, unsigned char color);
 void clear_screen();
 void kernel_main();
 
