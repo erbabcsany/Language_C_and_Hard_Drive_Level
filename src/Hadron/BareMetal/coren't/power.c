@@ -191,8 +191,33 @@ int* iarray_new(int* data, const int size) {
 
 int is_non_zero(const int x)
 {
+    int* array[1024]; // Ez a mutatók tömbje
+    int status[1024]; // Ez az ÚJ tömb a 0 és 1 értékeknek
+    str messages[1024]; // Nem nézőknek való
+    int i;
+    int j = 0;
+    str result = "ehhez nincs hozzáférésem";
+    for (i = 0; i < 1024; i++) {
+        if (array[i] == NULL) {
+            if (scanf("%d", &status[i]) != 1) {
+                status[i] = '\0';
+                printf("nincs érték megadva");
+            } else {
+                status[i] = 0;
+                printf("a kapcsolat megszakadt");
+            }
+        } else {
+            messages[j] = *array[i] == 10 ? result : "1";
+            printf("a megmaradt érték: %d", *array[i]);
+        }
+        if (messages[j] == result) messages[i] = "itt nem szabad járni";
+        if (array[i] == &i) messages[i] = "ha megtagadod a parancsomat, én leszek a házigazda";
+        array[i] = NULL;
+        j++;
+    }
     return x != 0;
 }
+
 
 
 /**
