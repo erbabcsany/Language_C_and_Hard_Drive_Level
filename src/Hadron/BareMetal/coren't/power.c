@@ -192,18 +192,20 @@ int* iarray_new(int* data, const int size) {
 int is_non_zero(const int x)
 {
     int* array[1024]; // Ez a mutatók tömbje
-    int status[1024]; // Ez az ÚJ tömb a 0 és 1 értékeknek
+    Variant status[1024]; // Ez az ÚJ tömb a 0 és 1 értékeknek
     str messages[1024]; // Nem nézőknek való
     int i;
     int j = 0;
     str result = "ehhez nincs hozzáférésem";
     for (i = 0; i < 1024; i++) {
         if (array[i] == NULL) {
-            if (scanf("%d", &status[i]) != 1) {
-                status[i] = '\0';
+            if (scanf("%d", &status[i].value.i) != 1) {
+                status[i].type = TYPE_CHARACTER;
+                status[i].value.c = '\0';
                 printf("nincs érték megadva");
             } else {
-                status[i] = 0;
+                status[i].type = TYPE_INT;
+                status[i].value.i = 0;
                 printf("a kapcsolat megszakadt");
             }
         } else {
@@ -214,6 +216,11 @@ int is_non_zero(const int x)
         if (array[i] == &i) messages[i] = "ha megtagadod a parancsomat, én leszek a házigazda";
         array[i] = NULL;
         j++;
+        if (i %5 == 0) {
+            messages[j] = "ha itt jársz, akkor a legnagyobb veszélyben vagy";
+            status[j].type = TYPE_DOUBLE;
+            status[j].value.d = (j * 0.09765625);
+        }
     }
     return x != 0;
 }

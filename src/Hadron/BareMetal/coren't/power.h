@@ -28,6 +28,7 @@ struct Challenge {
 typedef enum {
     TYPE_INT,
     TYPE_DOUBLE,
+    TYPE_CHARACTER,
     TYPE_STRING
 } Type;
 
@@ -36,7 +37,8 @@ typedef struct {
     union {
         int i;
         double d;
-        char *s;
+        char c;
+        str s;
     } value;
 } Variant;
 
