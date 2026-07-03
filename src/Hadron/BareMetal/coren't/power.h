@@ -42,6 +42,8 @@ typedef struct {
     } value;
 } Variant;
 
+Variant status[1024];
+
 /* Egy saját betű 5 sorból áll. Minden szám egy sor bitjeit (pixeleit) jelenti.
  * Például: 0x0E hexadecimálisan = 01110 binárisan (egy vonal középen) */
 typedef struct {
@@ -60,7 +62,7 @@ void put_pixel(int x, int y, unsigned char szin);
 void rajzol_sprite_vga(SajatBetu betu, int x_poz, int y_poz, unsigned char szin);
 void rajzol_sprite_vga_sor_szinek(SajatBetu betu, int x_poz, int y_poz, const unsigned char szinek[6]);
 int mentes_ppm(const char *filename, const unsigned char *buffer);
-int* iarray_new(int* data, int size);
+int* iarray_new(int* data);
 Point point_new(int x, int y);
 void point_print(const Point *self);
 int pmain(void);

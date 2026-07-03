@@ -1,7 +1,6 @@
 #include "power.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "../../macro.h"
@@ -179,33 +178,65 @@ Point point_new(const int x, const int y) {
     return p;
 }
 
-int* iarray_new(int* data, const int size) {
-    Point point;
+int* iarray_new(int* data) {
+    const int size = sizeof(data);
     IArray array;
-    str result = "";
-    point = point_new(size, 0);
     array.data = data;
     array.size = size;
     return array.data;
 }
 
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+
+int searchInMmap(const char* filename, const char* name) {
+    const int fd = open(filename, O_RDONLY);
+    struct stat sb;
+    char* file_in_memory;
+    char* match;
+    int position = -1;
+
+    if (fd == -1) return -1;
+
+    /* Lekérjük a fájl pontos méretét */
+    fstat(fd, &sb);
+
+    /* Összekötjük a fájlt a memóriával */
+    file_in_memory = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+    if (file_in_memory != MAP_FAILED) {
+        /* A villámgyors strstr közvetlenül a leképezett memórián fut */
+        match = strstr(file_in_memory, name);
+        if (match) {
+            position = (int)(match - file_in_memory);
+        }
+        munmap(file_in_memory, sb.st_size);
+    }
+
+    close(fd);
+    return position;
+}
+
 int is_non_zero(const int x)
 {
-    int* array[1024]; // Ez a mutatók tömbje
-    Variant status[1024]; // Ez az ÚJ tömb a 0 és 1 értékeknek
-    str messages[1024]; // Nem nézőknek való
+    int* array[1024]; /* Ez a mutatók tömbje */
+    Variant variants[1024]; /* Ez az ÚJ tömb a 0 és 1 értékeknek */
+    str messages[1024]; /* Nem nézőknek való */
     int i;
     int j = 0;
     str result = "ehhez nincs hozzáférésem";
     for (i = 0; i < 1024; i++) {
         if (array[i] == NULL) {
-            if (scanf("%d", &status[i].value.i) != 1) {
-                status[i].type = TYPE_CHARACTER;
-                status[i].value.c = '\0';
+            if (scanf("%d", &variants[i].value.i) != 1) {
+                variants[i].type = TYPE_CHARACTER;
+                variants[i].value.c = '\0';
                 printf("nincs érték megadva");
             } else {
-                status[i].type = TYPE_INT;
-                status[i].value.i = 0;
+                variants[i].type = TYPE_INT;
+                variants[i].value.i = 0;
                 printf("a kapcsolat megszakadt");
             }
         } else {
@@ -218,8 +249,8 @@ int is_non_zero(const int x)
         j++;
         if (i %5 == 0) {
             messages[j] = "ha itt jársz, akkor a legnagyobb veszélyben vagy";
-            status[j].type = TYPE_DOUBLE;
-            status[j].value.d = (j * 0.09765625);
+            variants[j].type = TYPE_DOUBLE;
+            variants[j].value.d = (j * 0.09765625);
         }
     }
     return x != 0;
