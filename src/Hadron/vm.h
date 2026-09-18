@@ -66,7 +66,7 @@ typedef struct {
 #define VM_STATE_WAITING 3
 #define VM_STATE_HALTED  4
     int system_state;                /* A Rendszer állapota */
-    bool is_locked;                  /* A Kvantum-Lakat fizikai állapota */
+    int is_locked;                  /* A Kvantum-Lakat fizikai állapota */
 } HadronVM;
 
 void vm_run(HadronVM* vm);

@@ -1,6 +1,6 @@
-//
-// Created by ervin on [2026. 03. 06.].
-//
+/*
+   Created by ervin on [2026. 03. 06.].
+*/
 
 #ifndef HADRON_LEXICON_H
 #define HADRON_LEXICON_H

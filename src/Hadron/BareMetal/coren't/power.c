@@ -1,9 +1,22 @@
+/*
+ * Created by ervin on [2026. máj. 16. 20∶29∶1778956152].
+ */
+
 #include "power.h"
+#include "calcπ.h"
 
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <unistd.h>
+
 #include "../../macro.h"
+
+
 
 #define VGA_WIDTH 320
 #define VGA_HEIGHT 200
@@ -157,17 +170,17 @@ void put_pixel(const int x, const int y, unsigned char szin)
 }
 
 void print_all(const int count, ...) {
-    __gnuc_va_list args;
+    va_list args;
     int i;
 
-    __builtin_va_start(args, count);
+    va_start(args, count);
 
     for (i = 0; i < count; i++) {
-        const int val = __builtin_va_arg(args, int);
+        const int val = va_arg(args, int);
         printf("%d\n", val);
     }
 
-    __builtin_va_end(args);
+    va_end(args);
 }
 
 /* "konstruktor" függvény */
@@ -186,37 +199,63 @@ int* iarray_new(int* data) {
     return array.data;
 }
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-
-int searchInMmap(const char* filename, const char* name) {
-    const int fd = open(filename, O_RDONLY);
+int searchInFile(const char* filename, const char* name) {
+    int fd;
     struct stat sb;
     char* file_in_memory;
-    char* match;
-    int position = -1;
+    int position = EOF;
+    size_t name_len;
+    char* p;
+    char* end;
 
-    if (fd == -1) return -1;
+    if (filename == NULL || name == NULL) return EOF;
+
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) return EOF;
 
     /* Lekérjük a fájl pontos méretét */
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1 || sb.st_size == 0) {
+        close(fd);
+        return EOF;
+    }
 
     /* Összekötjük a fájlt a memóriával */
     file_in_memory = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-    if (file_in_memory != MAP_FAILED) {
-        /* A villámgyors strstr közvetlenül a leképezett memórián fut */
-        match = strstr(file_in_memory, name);
-        if (match) {
-            position = (int)(match - file_in_memory);
-        }
-        munmap(file_in_memory, sb.st_size);
+    if (file_in_memory == MAP_FAILED) {
+        close(fd);
+        return EOF;
     }
 
+    /* Kiszámoljuk a keresett szó hosszát */
+    name_len = strlen(name);
+
+    /* Ha üres a keresett szó, vagy hosszabb, mint a fájl, nincs értelme keresni */
+    if (name_len == 0 || name_len > (size_t)sb.st_size) {
+        munmap(file_in_memory, sb.st_size);
+        close(fd);
+        return EOF;
+    }
+
+    p = file_in_memory;
+    /* Csak addig mehetünk, amíg a hátralévő hely elég a keresett szónak */
+    end = file_in_memory + sb.st_size - name_len;
+
+    while (p <= end) {
+        /* A memchr villámgyorsan megkeresi az első egyező karaktert */
+        p = memchr(p, name[0], (size_t)(end - p + 1));
+        if (!p) break; /* Nincs több ilyen kezdőbetű, vége */
+
+        /* Ha megvan a kezdőbetű, a memcmp ellenőrzi a teljes szót */
+        if (memcmp(p, name, name_len) == 0) {
+            position = (int)(p - file_in_memory);
+            break; /* Megtaláltuk! */
+        }
+        p++; /* Tovább lépünk, ha fals riasztás volt */
+    }
+
+    munmap(file_in_memory, sb.st_size);
     close(fd);
+
     return position;
 }
 
@@ -274,7 +313,7 @@ int is_non_zero(const int x)
  * infinite or erroneous behavior.
  *
  * @param bin An integer input value influencing the output string and loop behavior.
- * @return A string containing either "1", or a sequence of '1' or '0' based on the logic in the function.
+ * @return A string containing either "1" or a sequence of '1' or '0' based on the logic in the function.
  */
 str force_check(const int bin) {
     str result = "";
@@ -372,7 +411,118 @@ void rajzol_sprite_vga_sor_szinek(SajatBetu betu, int x_poz, int y_poz, const un
     }
 }
 
+static double sonic_calc_pi(int iterations) {
+    double rest = 0.0;
+    double sign = 4.0;
+
+    int j;
+    for (j = 0; j < iterations; j++) {
+        rest += sign / (j * 2.0 + 1.0);
+        sign = -sign;
+    }
+    return rest;
+}
+
+#include <math.h>
+
+static double tails_calc_pi(int steps) {
+    double pi = 0.0;
+    int k;
+    for (k = 0; k < steps; k++) {
+        double term = (1.0 / pow(16.0, k)) * (
+            4.0 / (8.0 * k + 1.0) -
+            2.0 / (8.0 * k + 4.0) -
+            1.0 / (8.0 * k + 5.0) -
+            1.0 / (8.0 * k + 6.0)
+        );
+        pi += term;
+    }
+    return pi;
+}
+
+static double shadow_ultimate_pi() {
+    const double C = 426880;
+    const double L = 13591409;
+    const double X = 1;
+    const double M = 1;
+
+    const double sum = M * L / X;
+    const double sqrtK = sqrt(10005);
+
+    return C * sqrtK / sum;
+}
+
+#define PLACES 1000000
+#define SIZE (PLACES + 5)
+
+int pi[SIZE], term[SIZE], temp[SIZE];
+
+/* Globális tömbök a memóriatúlcsordulás megelőzésére és a C90 kompatibilitás miatt. */
+int pi[SIZE], term[SIZE], temp[SIZE];
+
+/* OKOSABB OSZTÁS: Egy fixpontos tömb leosztása egy sima egész számmal.
+   Kezeli a 9-nél nagyobb kiinduló értékeket is a tömb elején! */
+void arr_div(int *arr, int divisor) {
+    long carry = 0;
+    int i;
+    for (i = 0; i < SIZE; i++) {
+        long cur = arr[i] + carry * 10;
+
+        /* Ha az első (i=0) elem nagyobb mint 9, a cur/divisor egész része
+           itt keletkezik, a maradék pedig szabályosan csorog tovább. */
+        arr[i] = (int)(cur / divisor);
+        carry = cur % divisor;
+    }
+}
+
+/* Két fixpontos tömb összeadása vagy kivonása (ha sub != 0, akkor kivonás). */
+void arr_op(int *dest, const int *src, int sub) {
+    int carry = 0, i;
+    for (i = SIZE - 1; i >= 0; i--) {
+        int val = dest[i] + (sub ? -src[i] : src[i]) + carry;
+        if (val < 0) { val += 10; carry = -1; }
+        else if (val >= 10) { val -= 10; carry = 1; }
+        else { carry = 0; }
+        dest[i] = val;
+    }
+}
+
+/* Az arctan(1/x) kiszámítása Taylor-sorral, a szorzó (mult) azonnali alkalmazásával. */
+void add_arctan(int x, int mult, int sub) {
+    int k = 1, sign = 0, i;
+
+    /* A term nullázása. */
+    for (i = 0; i < SIZE; i++) term[i] = 0;
+
+    /* KOMPAKT MEGOLDÁS: a szorzót egyszerűen beírjuk a 0. indexre... */
+    term[0] = mult;
+
+    /* ...és a módosított arr_div egyetlen lépésben elvégzi a mult / x osztást! */
+    arr_div(term, x);
+
+    while (1) {
+        /* Megnézzük, hogy a term üres-e (elértük-e a pontossági határt). */
+        for (i = 0; i < SIZE && term[i] == 0; i++);
+        if (i == SIZE) break;
+
+        /* Megőrizzük a term-et, majd leosztjuk: temp = term / (2k - 1). */
+        for (i = 0; i < SIZE; i++) temp[i] = term[i];
+        arr_div(temp, 2 * k - 1);
+
+        /* Hozzáadjuk vagy kivonjuk a pi-ből az aktuális előjeltől függően. */
+        arr_op(pi, temp, sign ? !sub : sub);
+
+        /* Következő tag előkészítése: term = term / x^2. */
+        arr_div(term, x);
+        arr_div(term, x);
+
+        sign = !sign;
+        k++;
+    }
+}
+
 int pmain(void) {
+    int i;
     int a[] = {10, 36, 78, 41};
     const int size = ARRAY_SIZE(a);
     SajatBetu kodolt_uzenet[1];
@@ -412,7 +562,26 @@ int pmain(void) {
         return 1;
     }
 
+    printf("%d\n", searchInFile("core.hadron", "token"));
     printf("o%s", force_check(bin));
+
+    printf("Sonic kódja (5 lépés):   %.15f\n", sonic_calc_pi(5));
+    printf("Tails kódja (5 lépés):   %.15f\n", tails_calc_pi(5));
+    printf("Shadow kódja (1 lépés):   %.15f\n", shadow_ultimate_pi());
+
+    /* A tömbök alaphelyzetbe állítása. */
+    for (i = 0; i < SIZE; i++) pi[i] = 0;
+
+    /* Machin-formula: pi = 16 * arctan(1/5) - 4 * arctan(1/239). */
+    add_arctan(5, 16, 0);   /* Hozzáadjuk a 16 * arctan(1/5)-öt. */
+    add_arctan(239, 4, 1);  /* Kivonjuk a 4 * arctan(1/239)-et. */
+
+    /* Eredmény formázott kiíratása. */
+    printf("A valódi PI(π) értéke %d tizedesjegy pontossággal:\n%d.", PLACES, pi[0]);
+    for (i = 1; i <= PLACES; i++) {
+        printf("%d", pi[i]);
+    }
+    printf("\n");
 
     return 0;
 }

@@ -15,6 +15,12 @@ typedef enum Bin {
     I
 } Bin;
 
+/* C90 struktúra a nagyszám tárolására: a számjegyeket fordított sorrendben tároljuk */
+typedef struct {
+    int digits[1000000];
+    int length;
+} BigInt;
+
 typedef struct {
     int *data;
     int size;
@@ -28,21 +34,15 @@ struct Challenge {
 typedef enum {
     TYPE_INT,
     TYPE_DOUBLE,
+    TYPE_FLOAT,
     TYPE_CHARACTER,
-    TYPE_STRING
+    TYPE_ARRAY
 } Type;
 
 typedef struct {
-    Type type;
-    union {
-        int i;
-        double d;
-        char c;
-        str s;
-    } value;
-} Variant;
-
-Variant status[1024];
+    char i;
+    int value;
+} Plastic;
 
 /* Egy saját betű 5 sorból áll. Minden szám egy sor bitjeit (pixeleit) jelenti.
  * Például: 0x0E hexadecimálisan = 01110 binárisan (egy vonal középen) */
@@ -53,8 +53,9 @@ typedef struct {
 /* A te saját ábécéd globális deklarációja */
 extern const SajatBetu RUNA_ALFA;
 
-struct Challenge power(__uint128_t x);
+struct Challenge power(unsigned long x);
 str force_check(int bin);
+int searchInFile(const char* filename, const char* name);
 unsigned long hexadecimalis_decimalis(const char *hex, int *ervenyes);
 void rajzol_sajat_betu(SajatBetu betu);
 void vga_szin_rgb(unsigned char color, unsigned char rgb[3]);

@@ -1,6 +1,6 @@
-//
-// Created by ervin on [2026. 03. 04.].
-//
+/*
+   Created by ervin on [2026. 03. 04.].
+*/
 
 /* =====================================================================
    HADRON CORE HEADER FÁJL (hadron.h)
