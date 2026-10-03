@@ -8,13 +8,13 @@
 
 Type* type_new(const char value) {
     Type* type = malloc(sizeof(Type));
-    type->value = value;
-    type->history[0] = value;
+    type->variant.value.c = value;
+    type->i++;
     return type;
 }
 
 int calc(const char value) {
     Type* type = {0};
-    type->value = value;
+    type->variant.value.c = value;
     return 0;
 }

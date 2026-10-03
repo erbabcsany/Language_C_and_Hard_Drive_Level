@@ -3,7 +3,6 @@
  */
 
 #include "power.h"
-#include "calcπ.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -15,8 +14,8 @@
 #include <unistd.h>
 
 #include "../../macro.h"
-
-
+#include "char/kozmikus_jel.h"
+#include "circular/push.h"
 
 #define VGA_WIDTH 320
 #define VGA_HEIGHT 200
@@ -259,44 +258,6 @@ int searchInFile(const char* filename, const char* name) {
     return position;
 }
 
-int is_non_zero(const int x)
-{
-    int* array[1024]; /* Ez a mutatók tömbje */
-    Variant variants[1024]; /* Ez az ÚJ tömb a 0 és 1 értékeknek */
-    str messages[1024]; /* Nem nézőknek való */
-    int i;
-    int j = 0;
-    str result = "ehhez nincs hozzáférésem";
-    for (i = 0; i < 1024; i++) {
-        if (array[i] == NULL) {
-            if (scanf("%d", &variants[i].value.i) != 1) {
-                variants[i].type = TYPE_CHARACTER;
-                variants[i].value.c = '\0';
-                printf("nincs érték megadva");
-            } else {
-                variants[i].type = TYPE_INT;
-                variants[i].value.i = 0;
-                printf("a kapcsolat megszakadt");
-            }
-        } else {
-            messages[j] = *array[i] == 10 ? result : "1";
-            printf("a megmaradt érték: %d", *array[i]);
-        }
-        if (messages[j] == result) messages[i] = "itt nem szabad járni";
-        if (array[i] == &i) messages[i] = "ha megtagadod a parancsomat, én leszek a házigazda";
-        array[i] = NULL;
-        j++;
-        if (i %5 == 0) {
-            messages[j] = "ha itt jársz, akkor a legnagyobb veszélyben vagy";
-            variants[j].type = TYPE_DOUBLE;
-            variants[j].value.d = (j * 0.09765625);
-        }
-    }
-    return x != 0;
-}
-
-
-
 /**
  * Generates a string based on the provided integer input.
  *
@@ -335,17 +296,6 @@ str force_check(const int bin) {
         return "1";
     }
     return result;
-}
-
-int force_point_new(const int x, const int y)
-{
-    const int _x = is_non_zero(x);
-    const int _y = is_non_zero(y);
-    if (_x == 1 || _y == 1)
-    {
-        return 1;
-    }
-    return 0;
 }
 
 /* "metódus" */
@@ -502,7 +452,7 @@ void add_arctan(int x, int mult, int sub) {
 
     while (1) {
         /* Megnézzük, hogy a term üres-e (elértük-e a pontossági határt). */
-        for (i = 0; i < SIZE && term[i] == 0; i++);
+        for (i = 0; i < SIZE && term[i] == 0; i++) {}
         if (i == SIZE) break;
 
         /* Megőrizzük a term-et, majd leosztjuk: temp = term / (2k - 1). */
@@ -521,8 +471,44 @@ void add_arctan(int x, int mult, int sub) {
     }
 }
 
+int maink(void) {
+    /* C90 SZABÁLY: Az ÖSSZES változót kötelező a main() legtetején deklarálni! */
+    TisztaJel elso;
+    TisztaJel masodik;
+    TisztaJel kimenet;
+
+    printf("--- Stark Laboratorium: Modularis C90 Teszt ---\n\n");
+
+    /* Inicializalunk */
+    puffer_inicializal();
+
+    /* TE magad hatarozod meg a jeleket, funkcionalisan, hiba nelkul! */
+    elso    = jel_gyarto(0x00ACE123UL, KOR, 2, 1, 2);
+    masodik = jel_gyarto(0x00AABBCCUL, NEGYSZOG, 0, 3, 1);
+
+    /* Kiszervezett mentes */
+    puffer_mentes(elso);
+    puffer_mentes(masodik);
+
+    /* Olvasas es tiszta ellenorzes */
+    while (puffer_kiolvasas(&kimenet)) {
+        printf("Jel ID: 0x%% | Tipus: ", kimenet.jel_id);
+        switch (kimenet.alakzat.tipus) {
+        case VONAL:     printf("VONAL     "); break;
+        case KOR:       printf("KÖR       "); break;
+        case HAROMSZOG: printf("HÁROMSZÖG "); break;
+        case NEGYSZOG:  printf("NÉGYSZÖG  "); break;
+        }
+        printf("| Rács: X=%d, Y=%d | Meret: %d\n",
+               kimenet.alakzat.x, kimenet.alakzat.y, kimenet.alakzat.meret);
+    }
+
+    return 0;
+}
+
 int pmain(void) {
     int i;
+    Variant var;
     int a[] = {10, 36, 78, 41};
     const int size = ARRAY_SIZE(a);
     SajatBetu kodolt_uzenet[1];
@@ -569,19 +555,22 @@ int pmain(void) {
     printf("Tails kódja (5 lépés):   %.15f\n", tails_calc_pi(5));
     printf("Shadow kódja (1 lépés):   %.15f\n", shadow_ultimate_pi());
 
-    /* A tömbök alaphelyzetbe állítása. */
+    /* A tömbök alaphelyzetbe állítása. *
     for (i = 0; i < SIZE; i++) pi[i] = 0;
 
-    /* Machin-formula: pi = 16 * arctan(1/5) - 4 * arctan(1/239). */
-    add_arctan(5, 16, 0);   /* Hozzáadjuk a 16 * arctan(1/5)-öt. */
-    add_arctan(239, 4, 1);  /* Kivonjuk a 4 * arctan(1/239)-et. */
+    /* Machin-formula: pi = 16 * arctan(1/5) - 4 * arctan(1/239). *
+    add_arctan(5, 16, 0);   /* Hozzáadjuk a 16 * arctan(1/5)-öt. *
+    add_arctan(239, 4, 1);  /* Kivonjuk a 4 * arctan(1/239)-et. *
 
-    /* Eredmény formázott kiíratása. */
+    /* Eredmény formázott kiíratása. *
     printf("A valódi PI(π) értéke %d tizedesjegy pontossággal:\n%d.", PLACES, pi[0]);
     for (i = 1; i <= PLACES; i++) {
         printf("%d", pi[i]);
     }
-    printf("\n");
+    printf("\n");*/
+    pain();
 
     return 0;
 }
+
+/* main.c - Szigoru C90-es tesztfile */

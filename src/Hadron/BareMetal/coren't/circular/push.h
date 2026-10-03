@@ -7,6 +7,34 @@
 #include "../type.h"
 #define MAX_SIZE 1024
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define ELEM_SZAM 1024
+
+/* Csúsztatási irányok típusdefiníciója */
+typedef enum {
+    CSUSZTAT_BALRA,  /* Új elem a végére jön, a régi elemek balra (eleje felé) csúsznak */
+    CSUSZTAT_JOBBRA  /* Új elem az elejére jön, a régi elemek jobbra (vége felé) csúsznak */
+} CsusztatasIrany;
+
+/* Szigorú, típusbiztos és irányított tömbkonténer */
+typedef struct {
+    unsigned char memoria[ELEM_SZAM * 16]; /* Fix helyfoglalás (pl. max 16 bájtos elemeknek) */
+    size_t elem_meret;                     /* A kényszerített alaptípus mérete (sizeof) */
+    size_t jelenlegi_darabszam;            /* Hány valós elem van most a tömbben */
+    CsusztatasIrany irany;                 /* Merre csússzanak az elemek beszúráskor */
+} SzigoruTomb;
+
+typedef struct {
+    void *data;          /* Most már hivatalosan is tisztán void*! Bármit elnyel. */
+    size_t element_size; /* Egyetlen elem mérete bájtokban */
+    int write_index;
+    int read_index;
+    int count;
+} AmyGenericBuffer;
+
 /*
  * AMY_PERFECT_PUSH:
  * Nincs status paraméter! Nincs maradékos osztás (%)! Nincs lassú for ciklus!
@@ -59,6 +87,8 @@ typedef struct {
     int a;
 } m;
 
-int push(Variant value);
+int pain(void);
+void push(void* value);
+void* get(int index);
 
 #endif /* HADRON_PUSH_H */

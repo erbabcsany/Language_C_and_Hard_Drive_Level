@@ -31,14 +31,6 @@ struct Challenge {
     int value;
 };
 
-typedef enum {
-    TYPE_INT,
-    TYPE_DOUBLE,
-    TYPE_FLOAT,
-    TYPE_CHARACTER,
-    TYPE_ARRAY
-} Type;
-
 typedef struct {
     char i;
     int value;
