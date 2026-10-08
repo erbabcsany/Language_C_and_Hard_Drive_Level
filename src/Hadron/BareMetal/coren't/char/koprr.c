@@ -1,136 +1,109 @@
-//
-// Created by ervin on 2026. 10. 08..
-//
+/*
+   Created by ervin on [2026. 10. 08.].
+*/
+
+#include "koprr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <setjmp.h>
-#include <sys/stat.h>
 
-/* --- ACTIVE: Anyagi Tulajdonságok Bitmaszkjai --- */
-#define BIT_SAFE        0x01  /* Tömör, stabil anyagi pont */
-#define BIT_CRASH       0x04  /* Hadron megsemmisülés (SEGV) */
-#define BIT_SIZE_UP     0x10  /* Tágulás (+) -> irany_regiszter = 1 */
-#define BIT_SIZE_DOWN   0x20  /* Összehúzódás (-) -> irany_regiszter = 0 */
-#define BIT_KEYWORD     0x40  /* ÚJ/ACTIVE: A bájt önmagában hordozza a kulcsszó-identitást! */
+#define BIT_SAFE        0x01
+#define BIT_CRASH       0x04
+#define BIT_KEYWORD     0x40
 
-/* --- SOLID: A Hadron Zárt Fizikai Magja --- */
 typedef struct {
     unsigned char* mtrx_adat;
     size_t meret;
     size_t maszk;
-    int irany_regiszter;
+    unsigned char adat_regiszter;
+    unsigned char bit_pozicio;
     jmp_buf redirect_zone;
-} HadronMag;
+} HadronCalibratedCore;
 
-/* --- CLEAN & ACTIVE: Elágazásmentes Futószalag Makró --- */
-/* Nincs egyetlen 'if' sem a méretkorlátokra: a biteltolás és a maszkolás
-   tisztán a hardver szintjén korlátozza a méretet 32 és 33554432 között. */
-#define HADRON_COLLIDER_EXEC(core, p) \
+/* Típusdefiníciók beolvasása a külső fájlból */
+void Hadron_Load_Types(HadronCalibratedCore* core, const char* meta_filepath) {
+    FILE* f = fopen(meta_filepath, "r");
+    char line[256];
+    size_t i;
+
+    for (i = 0; i < core->meret; i++) core->mtrx_adat[i] = BIT_CRASH;
+    if (!f) return;
+
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        unsigned int type_id = 0, bit_mask = 0, density = 0;
+        char type_name[64];
+
+        if (sscanf(line, "0x%x | %63s | %u | 0x%x", &type_id, type_name, &density, &bit_mask) == 4) {
+            core->mtrx_adat[type_id & core->maszk] = (unsigned char)bit_mask;
+            printf("[Hadron] Típus kalibrálva -> ID: 0x%02X | Név: %s | Maszk: 0x%02X\n", type_id, type_name, bit_mask);
+        }
+    }
+    fclose(f);
+}
+
+#define HADRON_WRITE_BIT(core, bit_val) \
+    do { \
+        unsigned char pos = (core)->bit_pozicio; \
+        (core)->adat_regiszter &= ~(1 << pos); \
+        (core)->adat_regiszter |= (((bit_val) & 0x01) << pos); \
+        (core)->bit_pozicio = (pos + 1) & 7; \
+    } while(0)
+
+/* --- A KÖNYRTELEN COLLIDER MAKRÓ --- */
+#define HADRON_COLLIDER_CALIBRATED_EXEC(core, p) \
     do { \
         unsigned char raw_particle = (unsigned char)*(p); \
         unsigned char mask = (core)->mtrx_adat[raw_particle & (core)->maszk]; \
         \
-        /* 1. SEGV szint: Ha instabil a pont, azonnali hardveres leállás */ \
+        /* Ha a maszk CRASH (0x04), nincs duma, a vas azonnal lecsap */ \
         if (mask & BIT_CRASH) { \
             volatile int* collapse = (volatile int*)0; *collapse = 0; \
         } \
         \
-        /* 2. REDIRECT szint: Ha nem safe és nem méretváltó -> Átirányítás a működő zónába */ \
-        if (!(mask & (BIT_SAFE | BIT_SIZE_UP | BIT_SIZE_DOWN))) { \
+        /* Ha nem biztonságos, méréshiba -> azonnali átirányítás */ \
+        if (!(mask & BIT_SAFE)) { \
             longjmp((core)->redirect_zone, 1); \
         } \
         \
-        /* 3. ACTIVE LOGIKA: Az adat közvetlenül billenti az irány-regisztert (0 vagy 1) */ \
-        (core)->irany_regiszter = ((mask & BIT_SIZE_UP) >> 4) | (!((mask & BIT_SIZE_DOWN) >> 5) & (core)->irany_regiszter); \
-        \
-        /* 4. CLEAN MÉRETELTOLÁS: Matematikai alapú méretezés feltételek nélkül */ \
-        if (mask & (BIT_SIZE_UP | BIT_SIZE_DOWN)) { \
-            (core)->meret = (core)->irany_regiszter ? ((core)->meret << 1) : ((core)->meret >> 1); \
-            /* Hardveres korlátok kényszerítése elágazás nélkül (Clamp 32 és 33554432 közé) */ \
-            (core)->meret = ((core)->meret < 32) ? 32 : (((core)->meret > 33554432) ? 33554432 : (core)->meret); \
-            (core)->maszk = (core)->meret - 1; \
-            (core)->mtrx_adat = (unsigned char*)realloc((core)->mtrx_adat, (core)->meret); \
-        } \
+        HADRON_WRITE_BIT(core, raw_particle); \
         (p)++; \
     } while(0)
 
-/* --- SOLID: Inicializálás a tiszta nulláról, az idő lenyomatával --- */
-void Hadron_Core_Init(HadronMag* core, const char* filepath) {
-    struct stat st;
-    size_t i;
-    unsigned long mtime_seed;
-
-    core->meret = 32;
-    core->maszk = 31;
-    core->irany_regiszter = 0;
-    core->mtrx_adat = (unsigned char*)calloc(core->meret, sizeof(unsigned char));
-
-    /* Alapértelmezés: a tiszta nulláról indulunk, minden TILTOTT (0x04) */
-    for (i = 0; i < core->meret; i++) {
-        core->mtrx_adat[i] = BIT_CRASH;
-    }
-
-    /* Lekérjük az üres fájl statisztikáját */
-    if (stat(filepath, &st) != 0) return;
-    mtime_seed = (unsigned long)st.st_mtime;
-
-    /* A mátrix felületét tisztán az idő-interferencia alakítja ki */
-    for (i = 0; i < core->meret; i++) {
-        if (((i ^ mtime_seed) & 0x03) == 0) {
-            core->mtrx_adat[i] = BIT_SAFE;
-        }
-    }
-}
-
-/* --- ACTIVE: Utólagos, használat közbeni konfiguráció a vason --- */
-void Hadron_Core_Register_Particle(HadronMag* core, unsigned char raw_byte, unsigned char properties) {
-    core->mtrx_adat[raw_byte & core->maszk] |= properties;
-}
-
 int hain(void) {
-    HadronMag core;
-    const char* hadron_stream = "\x01\x02+\x01-\x05$";
-    const char* p = hadron_stream;
+    HadronCalibratedCore core;
+    /* A tesztfolyamat: \x01, \x02 stabil adatok, \x0B a megsemmisülés */
+    const char* stream = "\x01\x02\x01\x02\x0B";
+    const char* p = stream;
 
-    /* Létrehozzuk a 0 bájtos üres forrást */
-    FILE* f = fopen("hadron.bin", "wb"); fclose(f);
+    core.meret = 32;
+    core.maszk = 31;
+    core.adat_regiszter = 0x00;
+    core.bit_pozicio = 0;
+    core.mtrx_adat = (unsigned char*)calloc(core.meret, sizeof(unsigned char));
 
-    /* Rendszerindítás a nulláról */
-    Hadron_Core_Init(&core, "hadron.bin");
+    Hadron_Load_Types(&core, "types.hadron");
 
-    /* Használat közben adjuk hozzá az anyagi szabályokat (Utólagos definiálás) */
-    Hadron_Core_Register_Particle(&core, '\x01', BIT_SAFE);
-    Hadron_Core_Register_Particle(&core, '\x02', BIT_SAFE);
-
-    /* A méretmódosítók regisztrációja */
-    Hadron_Core_Register_Particle(&core, '+', BIT_SIZE_UP | BIT_SAFE);
-    Hadron_Core_Register_Particle(&core, '-', BIT_SIZE_DOWN | BIT_SAFE);
-
-    /* Egy bájtot közvetlenül KULCCSZÓNAK deklarálunk szoftveres táblák nélkül */
-    Hadron_Core_Register_Particle(&core, '\x05', BIT_SAFE | BIT_KEYWORD);
-
-    /* A kényszerített SEGV pont */
-    Hadron_Core_Register_Particle(&core, '$', BIT_CRASH);
-
-    /* Védelmi és átirányítási zóna (Minden más eset) */
     if (setjmp(core.redirect_zone) != 0) {
-        printf("\n[Átirányítás] Nem biztonságos részecske izolálva: 0x%02X\n", (unsigned char)*p);
+        printf("\n[Mérőműszer] Vízszint-eltérés! Anyaghiba izolálva a címen: 0x%02X\n", (unsigned char)*p);
         p++;
     }
 
-    printf("[Hadron] A kód ellenőrzött: CLEAN, SOLID, ACTIVE. Indítás...\n\n");
+    printf("\n[Hadron 0.2-Beta] Futás a kalibrált, valós vízszint alapján...\n\n");
 
     while (1) {
-        /* Lekérjük a részecske tulajdonságait a mátrixból elágazás nélkül */
-        unsigned char current_mask = core.mtrx_adat[(unsigned char)*p & core.maszk];
+        unsigned char raw = (unsigned char)*p;
+        unsigned char m = core.mtrx_adat[raw & core.maszk];
 
-        printf("Részecske: 0x%02X | Mátrix méret: %lu | Típus: %s\n",
-               (unsigned char)*p,
-               (unsigned long)core.meret,
-               (current_mask & BIT_KEYWORD) ? "KULCCSZÓ" : "SIMA ADAT");
+        /* AKTÍV MÉRÉS: A makró fut le ELŐSZÖR. Ha az adat 0x0B, a kód ITT MEGHAL,
+           és az alatta lévő printf-et a processzor fizikailag soha nem éri el! */
+        HADRON_COLLIDER_CALIBRATED_EXEC(&core, p);
 
-        HADRON_COLLIDER_EXEC(&core, p);
+        /* Csak akkor kapunk eredményt, ha a vízszint stabil maradt */
+        printf("Részecske sikeresen átáramlott: 0x%02X | Maszk: 0x%02X | Osztály: %s\n",
+               raw, m, (m & BIT_KEYWORD) ? "KULCCSZÓ" : "STABIL ADAT");
     }
 
     free(core.mtrx_adat);

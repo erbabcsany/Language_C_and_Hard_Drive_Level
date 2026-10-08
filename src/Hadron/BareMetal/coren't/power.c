@@ -16,6 +16,7 @@
 #include "../../macro.h"
 #include "char/kozmikus_jel.h"
 #include "circular/push.h"
+#include "char/koprr.h"
 
 #define VGA_WIDTH 320
 #define VGA_HEIGHT 200
@@ -568,7 +569,7 @@ int pmain(void) {
         printf("%d", pi[i]);
     }
     printf("\n");*/
-    pain();
+    hain();
 
     return 0;
 }
