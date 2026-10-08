@@ -3,7 +3,7 @@
 */
 
 #ifndef HADRON_CHARACTERS_H
-#define HADRON_CHARACTERS_H = 4096;
+#define HADRON_CHARACTERS_H = {'0'};
 
 
 

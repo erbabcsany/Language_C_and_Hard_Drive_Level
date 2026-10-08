@@ -20,6 +20,9 @@ set(SOURCES
         src/Hadron/BareMetal/coren't/circular/push.c
         src/Hadron/BareMetal/coren't/char/kozmikus_jel.h
         src/Hadron/BareMetal/coren't/char/kozmikus_jel.c
+        src/Hadron/BareMetal/coren't/character.h
+        src/Hadron/BareMetal/coren't/char/koprr.h
+        src/Hadron/BareMetal/coren't/char/koprr.c
 )
 
 add_executable(untitled ${SOURCES})
